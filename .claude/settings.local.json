@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls ~/.claude/skills/guizang-ppt-skill/ 2>/dev/null && echo \"Already installed\" || echo \"Not installed\")",
+      "Read(//c/Users/WZH/.claude/skills/**)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

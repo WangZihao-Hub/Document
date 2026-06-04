@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机械臂拆包（De-bagging）全流程自动化技术方案 — 极详细版</title>
+<style>
+  /* ═══════════════════════════════════════════
+     主题系统：亮色 / 暗色
+     ═══════════════════════════════════════════ */
+  :root {
+    --primary: #1a56db;
+    --primary-hover: #1642b0;
+    --primary-light: #e8effd;
+    --primary-bg: #f0f5ff;
+    --accent: #0e9f6e;
+    --accent-light: #e3faf5;
+    --warn: #e67e22;
+    --warn-light: #fef5e7;
+    --danger: #dc2626;
+    --danger-light: #fef2f2;
+    --bg: #f9fafb;
+    --bg-card: #ffffff;
+    --bg-toolbar: #ffffff;
+    --text: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --border-light: #f3f4f6;
+    --code-bg: #1e293b;
+    --code-text: #e2e8f0;
+    --shadow: rgba(0,0,0,0.06);
+    --header-bg: linear-gradient(135deg, #1a365d 0%, #1a56db 100%);
+    --tag-ros-bg: #e8effd;
+    --tag-ros-text: #1a56db;
+    --tag-algo-bg: #e3faf5;
+    --tag-algo-text: #0e9f6e;
+    --tag-hw-bg: #fef5e7;
+    --tag-hw-text: #d97706;
+    --tag-new-bg: #fce7f3;
+    --tag-new-text: #be185d;
+    --card-bg: #ffffff;
+    --toc-bg: #ffffff;
+    --timeline-line: #d1d5db;
+    --timeline-dot: #1a56db;
+    --flow-bg: #f3f4f6;
+    --flow-text: #374151;
+    --print-btn-bg: #e8effd;
+    --print-btn-text: #1a56db;
+    --footer-text: #9ca3af;
+  }
+
+  [data-theme="dark"] {
+    --primary: #60a5fa;
+    --primary-hover: #93bbfc;
+    --primary-light: #1e3a5f;
+    --primary-bg: #0f1d2f;
+    --accent: #34d399;
+    --accent-light: #064e3b;
+    --warn: #fbbf24;
+    --warn-light: #451a03;
+    --danger: #f87171;
+    --danger-light: #450a0a;
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --bg-toolbar: #1e293b;
+    --text: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border: #334155;
+    --border-light: #1e293b;
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+    --shadow: rgba(0,0,0,0.3);
+    --header-bg: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    --tag-ros-bg: #1e3a5f;
+    --tag-ros-text: #60a5fa;
+    --tag-algo-bg: #064e3b;
+    --tag-algo-text: #34d399;
+    --tag-hw-bg: #451a03;
+    --tag-hw-text: #fbbf24;
+    --tag-new-bg: #4a0e2e;
+    --tag-new-text: #f9a8d4;
+    --card-bg: #1e293b;
+    --toc-bg: #1e293b;
+    --timeline-line: #334155;
+    --timeline-dot: #60a5fa;
+    --flow-bg: #1e293b;
+    --flow-text: #cbd5e1;
+    --print-btn-bg: #1e3a5f;
+    --print-btn-text: #60a5fa;
+    --footer-text: #475569;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; font-size: 16px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.75;
+    transition: background .3s, color .3s;
+  }
+
+  .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Header ── */
+  header {
+    background: var(--header-bg);
+    color: #fff;
+    padding: 56px 0 40px;
+    transition: background .3s;
+  }
+  header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 10px; letter-spacing: -.01em; }
+  header .subtitle { font-size: 1.05rem; opacity: .88; line-height: 1.5; }
+  header .meta { margin-top: 18px; font-size: .88rem; opacity: .72; display: flex; gap: 20px; flex-wrap: wrap; }
+  header .badge-new {
+    display: inline-block; background: rgba(255,255,255,.15); padding: 2px 12px;
+    border-radius: 20px; font-size: .75rem; font-weight: 500; margin-left: 10px;
+  }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 0;
+    position: sticky; top: 0; z-index: 100;
+    transition: background .3s, border-color .3s;
+  }
+  .toolbar .container { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .toolbar button, .toolbar .theme-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 16px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg-card); color: var(--text-secondary); cursor: pointer;
+    font-size: .85rem; transition: all .15s; font-family: inherit;
+  }
+  .toolbar button:hover, .toolbar .theme-btn:hover {
+    background: var(--primary-light); border-color: var(--primary); color: var(--primary);
+  }
+  .toolbar .badge { font-size: .75rem; color: var(--text-muted); margin-left: auto; }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--toc-bg); border-radius: 12px; padding: 28px 32px;
+    margin: 32px 0; box-shadow: 0 1px 4px var(--shadow);
+    transition: background .3s, box-shadow .3s;
+  }
+  .toc h2 { font-size: 1.1rem; margin-bottom: 16px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .toc ul { list-style: none; columns: 2; column-gap: 36px; }
+  .toc li { break-inside: avoid; margin-bottom: 3px; }
+  .toc a {
+    display: block; padding: 4px 10px; border-radius: 4px;
+    color: var(--text-secondary); text-decoration: none; font-size: .9rem;
+    transition: background .12s, color .12s;
+  }
+  .toc a:hover { background: var(--primary-light); color: var(--primary); }
+  .toc .toc-l2 { padding-left: 26px; font-size: .82rem; color: var(--text-muted); }
+  .toc .toc-l3 { padding-left: 44px; font-size: .8rem; color: var(--text-muted); }
+
+  /* ── Sections ── */
+  section { padding: 40px 0; }
+  section + section { border-top: 1px solid var(--border); }
+
+  h2 {
+    font-size: 1.45rem; font-weight: 700; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2 .section-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--primary); color: #fff; font-size: .85rem; flex-shrink: 0;
+  }
+  h3 { font-size: 1.12rem; font-weight: 600; margin: 28px 0 12px; color: var(--text); }
+  h4 { font-size: 1rem; font-weight: 600; margin: 22px 0 10px; color: var(--text-secondary); }
+  h5 { font-size: .93rem; font-weight: 600; margin: 16px 0 8px; color: var(--text-muted); }
+
+  p { margin-bottom: 14px; }
+  a { color: var(--primary); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card-bg); border-radius: 10px; padding: 20px 24px;
+    margin: 18px 0; box-shadow: 0 1px 3px var(--shadow);
+    border-left: 4px solid var(--primary);
+    transition: background .3s, box-shadow .3s;
+  }
+  .card.green { border-left-color: var(--accent); }
+  .card.orange { border-left-color: var(--warn); }
+  .card.red { border-left-color: var(--danger); }
+  .card.pink { border-left-color: #ec4899; }
+  .card-title { font-weight: 600; margin-bottom: 8px; font-size: .95rem; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: .88rem; }
+  th, td { padding: 10px 14px; text-align: left; border: 1px solid var(--border); }
+  th { background: var(--border-light); font-weight: 600; color: var(--text-secondary); }
+  tr:nth-child(even) td { background: var(--primary-bg); }
+
+  /* ── Code ── */
+  pre {
+    background: var(--code-bg); color: var(--code-text); border-radius: 8px;
+    padding: 16px 20px; overflow-x: auto; font-size: .82rem;
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    line-height: 1.55; margin: 14px 0;
+  }
+  code {
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    font-size: .84rem; background: var(--border-light); padding: 1px 5px; border-radius: 3px;
+  }
+  pre code { background: transparent; padding: 0; }
+
+  /* ── Syntax highlight ── */
+  .hl-kw { color: #c084fc; }
+  .hl-str { color: #86efac; }
+  .hl-fn { color: #fbbf24; }
+  .hl-cm { color: #64748b; font-style: italic; }
+  .hl-num { color: #f472b6; }
+  .hl-var { color: #67e8f9; }
+  .hl-op { color: #fca5a5; }
+  .hl-type { color: #93c5fd; }
+
+  /* ── Lists ── */
+  ul, ol { padding-left: 24px; margin-bottom: 14px; }
+  li { margin-bottom: 6px; }
+  ul ul, ol ol { margin-bottom: 0; }
+
+  /* ── Tags ── */
+  .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: .73rem; font-weight: 500;
+  }
+  .tag.ros { background: var(--tag-ros-bg); color: var(--tag-ros-text); }
+  .tag.algo { background: var(--tag-algo-bg); color: var(--tag-algo-text); }
+  .tag.hw { background: var(--tag-hw-bg); color: var(--tag-hw-text); }
+  .tag.new { background: var(--tag-new-bg); color: var(--tag-new-text); }
+
+  /* ── Timeline ── */
+  .timeline { position: relative; padding-left: 32px; margin: 24px 0; }
+  .timeline::before {
+    content:''; position: absolute; left: 10px; top: 4px; bottom: 4px;
+    width: 3px; background: var(--timeline-line); border-radius: 2px;
+  }
+  .timeline-item { position: relative; margin-bottom: 28px; }
+  .timeline-item::before {
+    content:''; position: absolute; left: -22px; top: 8px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--timeline-dot); border: 2px solid var(--bg); box-shadow: 0 0 0 2px var(--timeline-dot);
+  }
+  .timeline-item h4 { margin: 0 0 6px; }
+  .timeline-item .period { font-size: .8rem; color: var(--text-muted); margin-bottom: 8px; }
+
+  /* ── Flow diagram ── */
+  .flow {
+    background: var(--flow-bg); border-radius: 8px; padding: 14px 18px;
+    font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    font-size: .82rem; line-height: 1.55;
+    overflow-x: auto; white-space: pre; margin: 12px 0;
+    color: var(--flow-text);
+  }
+
+  /* ── Grid ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ── New team tip ── */
+  .new-team-tip {
+    background: var(--tag-new-bg); border-radius: 10px; padding: 16px 20px;
+    margin: 18px 0; border-left: 4px solid #ec4899;
+    font-size: .9rem;
+  }
+  .new-team-tip .tip-title {
+    font-weight: 600; color: var(--tag-new-text); margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ── Comparison box ── */
+  .compare-box {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;
+  }
+  .compare-box .col { border-radius: 10px; padding: 16px 20px; }
+  .compare-box .col-a { background: var(--accent-light); border: 1px solid var(--accent); }
+  .compare-box .col-b { background: var(--primary-light); border: 1px solid var(--primary); }
+  .compare-box h5 { margin: 0 0 8px; }
+  @media (max-width: 640px) { .compare-box { grid-template-columns: 1fr; } }
+
+  /* ── Print hint ── */
+  @media screen { .print-hint { display: block; } }
+  .print-hint {
+    text-align: center; padding: 12px; margin: 20px 0;
+    background: var(--print-btn-bg); border-radius: 8px; font-size: .85rem; color: var(--print-btn-text);
+  }
+
+  /* ── Footer ── */
+  footer { text-align: center; padding: 36px 0; font-size: .8rem; color: var(--footer-text); }
+
+  /* ── Page break ── */
+  .page-break { page-break-before: always; }
+
+  /* ── Print styles ── */
+  @media print {
+    body { background: #fff !important; color: #000 !important; }
+    .no-print { display: none !important; }
+    .page-break { page-break-before: always; }
+    @page { margin: 1.2cm 1.6cm; }
+    pre, code { font-size: 8pt; }
+    h2, h3, h4 { page-break-after: avoid; }
+    .toc a { color: #000; text-decoration: none; }
+    .card { break-inside: avoid; box-shadow: none; border: 1px solid #ddd; }
+    tr, td, th { page-break-inside: avoid; }
+    table { page-break-inside: auto; }
+    [data-theme="dark"] body { background: #fff !important; color: #000 !important; }
+    [data-theme="dark"] .card { background: #fff !important; border: 1px solid #ddd !important; }
+    [data-theme="dark"] pre { background: #f5f5f5 !important; color: #333 !important; }
+    [data-theme="dark"] td, [data-theme="dark"] th { border-color: #ddd !important; }
+    [data-theme="dark"] .new-team-tip { background: #fef2f2 !important; }
+    [data-theme="dark"] .compare-box .col-a { background: #e3faf5 !important; }
+    [data-theme="dark"] .compare-box .col-b { background: #e8effd !important; }
+    [data-theme="dark"] .toc { background: #fff !important; }
+    [data-theme="dark"] .flow { background: #f5f5f5 !important; color: #333 !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════ HEADER ═══════ -->
+<header>
+  <div class="container">
+    <h1>🤖 机械臂拆包（De-bagging）全流程自动化技术方案</h1>
+    <div class="subtitle">
+      从零落地指南 — 识别、抓取、拆袋、分离、取物全流程
+      <span class="badge-new">极详细版</span>
+    </div>
+    <div class="meta">
+      <span>📅 版本：v2.0 — 2026-06-04</span>
+      <span>👥 适用团队：5 人（含角色合并建议）</span>
+      <span>📄 密级：内部技术方案</span>
+      <span>🎯 目标：可运行 demo（16周）</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════ TOOLBAR ═══════ -->
+<div class="toolbar no-print">
+  <div class="container">
+    <button onclick="window.print()">🖨️ 生成 / 保存为 PDF</button>
+    <button onclick="document.querySelector('.toc').scrollIntoView({behavior:'smooth'})">📑 跳转到目录</button>
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 暗色主题</button>
+    <span class="badge">提示：点击"生成 PDF"→ 打印对话框中选择"另存为 PDF"</span>
+  </div>
+</div>
+
+<main class="container">
+
+<!-- ═══════ TOC ═══════ -->
+<div class="toc" id="toc">
+  <h2>📑 目录</h2>
+  <ul id="toc-list"><!-- JS自动填充 --></ul>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     模块 1：技术栈完整清单
+     ═══════════════════════════════════════════ -->
+<section id="sec1">
+  <h2><span class="section-num">1</span> 技术栈完整清单</h2>
+
+  <p>在开始任何硬件采购或代码编写之前，你需要先确定整个项目的<strong>软件技术栈</strong>。这就像盖房子要先选建筑材料——选错了材料，后面的每一步都会更加困难。本章列出构建机械臂拆包系统所需的全部软件技术，每个技术点都会说明<strong>"是什么、为什么选它、学习曲线如何、常见坑有哪些"</strong>。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧩 注意事项</div>
+    <ul>
+      <li><strong>不要追求"最新"而追求"最稳定"：</strong>团队的第一目标是让系统跑起来，而不是用最前沿的技术。选版本时优先考虑社区支持度和教程丰富度。</li>
+      <li><strong>版本兼容性是最大的坑：</strong>ROS版本和Ubuntu版本严格绑定，装错了会导致数天的徒劳调试。请严格按照本章的版本对照表安装。</li>
+      <li><strong>学习时间预估是保守的：</strong>以下学习时间基于全职学习（每天6-8小时）。如果你是业余时间学习，请乘以2-3倍。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec1-1">1.1 编程语言选择</h3>
+
+  <p>机械臂拆包项目涉及两个层面的编程：<strong>高层应用逻辑</strong>（视觉、决策、数据处理）和<strong>底层实时控制</strong>（运动控制、传感器通信）。因此我们需要两种语言分工协作。</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4><span class="tag algo">主要语言</span> Python 3.10+</h4>
+      <p><strong>是什么：</strong>Python 是一种解释型高级语言，语法简洁，被广泛用于AI/机器人和数据科学领域。在拆包项目中，Python 负责视觉检测（YOLOv8推理）、抓取点计算、状态机逻辑、ROS2节点编排等上层应用。</p>
+      <p><strong>为什么选它：</strong></p>
+      <ul>
+        <li>机器人/AI生态最丰富：OpenCV、PyTorch、NumPy、ROS2 Python API（rclpy）一应俱全</li>
+        <li>开发效率极高——相同功能Python代码量约为C++的1/3到1/5</li>
+        <li>团队上手快：非科班背景也能在2周内开始写可用代码</li>
+        <li>调试友好：解释执行，不需要编译，改完代码立刻看效果</li>
+      </ul>
+      <p><strong>学习曲线：</strong><span class="tag">低</span> 1-2周基础语法，3-4周可独立编写视觉处理ROS2节点。</p>
+      <p><strong>常见坑：</strong>GIL（全局解释器锁）导致多线程无法利用多核——如需并行，使用 <code>multiprocessing</code> 而非 <code>threading</code>。ROS2中建议用节点的多进程部署而非单进程多线程。</p>
+      <p><strong>版本建议：</strong>Python 3.10.12 或 3.11.x。避免 Python 3.12 初期版本（部分ROS2包兼容性不稳定）。</p>
+    </div>
+
+    <div class="card">
+      <h4><span class="tag hw">辅助语言</span> C++17</h4>
+      <p><strong>是什么：</strong>C++ 是一种编译型系统级语言，性能极致、内存可控。在拆包项目中，C++用于实时控制回路（力控/阻抗控制）、MoveIt2运动规划内核、自定义硬件驱动等对延迟敏感的底层模块。</p>
+      <p><strong>为什么需要它：</strong></p>
+      <ul>
+        <li>实时控制必须用C++——1ms的延迟差异在力控场景下可能导致物料损坏</li>
+        <li>ROS2的控制循环（ros2_control）、MoveIt2规划器底层都是C++</li>
+        <li>与硬件SDK（如UR的liburcl、Franka的libfranka）天然对接</li>
+        <li>零成本抽象——没有GC暂停，延迟可预测（微秒级抖动）</li>
+      </ul>
+      <p><strong>学习曲线：</strong><span class="tag hw">高</span> 4-8周基础，3个月以上才能独立编写运动控制模块。</p>
+      <p><strong>常见坑：</strong>未定义行为（UB）是C++中最可怕的bug——表现为"有时正常有时崩溃"。建议开启编译器警告（<code>-Wall -Wextra</code>）并使用AddressSanitizer。</p>
+      <p><strong>版本建议：</strong>C++17（ROS2 Humble默认标准）。不需要掌握所有C++特性，重点学习智能指针、Lambda、STL容器和ROS2的C++ API。</p>
+    </div>
+  </div>
+
+  <h3 id="sec1-2">1.2 操作系统选择</h3>
+
+  <table>
+    <tr><th>操作系统</th><th>优势</th><th>劣势</th><th>推荐度</th></tr>
+    <tr>
+      <td><strong>Ubuntu 22.04 LTS</strong></td>
+      <td>ROS2 Humble原生支持、社区最大、教程最多、包管理方便</td>
+      <td>对NVIDIA显卡驱动需要手动安装</td>
+      <td><span class="tag algo">强烈推荐</span></td>
+    </tr>
+    <tr>
+      <td>Windows 10/11</td>
+      <td>团队熟悉、软件生态丰富</td>
+      <td>ROS2支持不完整（部分包缺失），MoveIt2运行困难</td>
+      <td><span class="tag hw">不推荐</span></td>
+    </tr>
+    <tr>
+      <td>RTOS（如Preempt-RT Linux）</td>
+      <td>确定性延迟，适合硬实时控制</td>
+      <td>配置复杂，学习成本高，视觉/AI生态几乎为零</td>
+      <td><span class="tag hw">不推荐</span></td>
+    </tr>
+    <tr>
+      <td>macOS</td>
+      <td>开发体验好</td>
+      <td>ROS2支持极差，Gazebo无法运行，机械臂SDK均不支持</td>
+      <td><span class="tag hw">不推荐</span></td>
+    </tr>
+  </table>
+
+  <p><strong>为什么选 Ubuntu + ROS：</strong>ROS（Robot Operating System，机器人操作系统）不是传统意义上的操作系统，而是一个<strong>分布式通信框架 + 工具集 + 库生态</strong>。它提供了一套机器人开发的标准范式：节点（Node）之间通过话题（Topic）、服务（Service）、动作（Action）通信。ROS与Ubuntu深度绑定，ROS的每个版本只支持特定的Ubuntu版本——这是ROS生态最大的特点（也是最容易被忽视的坑）。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">💡 提醒</div>
+    <ul>
+      <li><strong>双系统 vs 虚拟机 vs WSL2：</strong>首选双系统（Ubuntu + Windows并存）。虚拟机图形性能差（Gazebo仿真会很卡）。WSL2虽然能跑ROS2但USB设备（相机、机械臂）直通困难，不建议用于实际项目。</li>
+      <li><strong>硬盘空间：</strong>至少给Ubuntu分配200GB。深度学习训练数据集、Docker镜像、ROS2编译产物都很占空间。</li>
+      <li><strong>国内网络：</strong>安装后第一时间换apt源（清华/阿里云），否则apt update可能耗时数小时。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec1-3">1.3 ROS版本选择：ROS1 Noetic vs ROS2 Humble</h3>
+
+  <table>
+    <tr><th>对比维度</th><th>ROS1 Noetic</th><th>ROS2 Humble</th></tr>
+    <tr><td>发布年份</td><td>2020</td><td>2022</td></tr>
+    <tr><td>支持截止</td><td>2025年5月（已停止官方维护）</td><td>2027年5月（仍在活跃维护）</td></tr>
+    <tr><td>通信机制</td><td>TCPROS/UDPROS（自定义协议）</td><td>DDS（工业标准，实时性好）</td></tr>
+    <tr><td>实时性</td><td>不支持硬实时</td><td>支持实时（搭配Preempt-RT内核）</td></tr>
+    <tr><td>多机器人支持</td><td>需手动配置</td><td>原生支持（DDS域机制）</td></tr>
+    <tr><td>安全性</td><td>无加密/认证</td><td>支持DDS-Security（加密+认证）</td></tr>
+    <tr><td>Python版本</td><td>Python 3.8</td><td>Python 3.10</td></tr>
+    <tr><td>中文社区支持</td><td>教程多、书籍多</td><td>快速增长中</td></tr>
+    <tr><td>推荐度</td><td><span class="tag hw">不推荐</span>（已EOL）</td><td><span class="tag algo">强烈推荐</span></td></tr>
+  </table>
+
+  <p><strong>为什么选 ROS2 Humble 而不是 ROS1 Noetic：</strong></p>
+  <ol>
+    <li><strong>ROS1已停止维护：</strong>Noetic于2025年5月EOL，不再接收安全更新。新项目不应基于一个已死亡的平台。</li>
+    <li><strong>ROS2的DDS通信：</strong>DDS（Data Distribution Service）是工业级的实时数据分发标准，比ROS1的自定义TCP协议更可靠、更低延迟。对于力控这种对延迟敏感的场景，DDS是更好的选择。</li>
+    <li><strong>行业趋势：</strong>所有主流机械臂厂商（UR、Franka、AUBO）的ROS驱动都已迁移到ROS2。新的开源项目（GraspNet、FoundationPose）也优先支持ROS2。</li>
+    <li><strong>MoveIt2：</strong>运动规划框架的ROS2版本（MoveIt2）已经成熟，支持混合规划（hybrid planning）和更强的碰撞检测。</li>
+  </ol>
+
+  <div class="compare-box">
+    <div class="col col-a">
+      <h5>✅ 正确组合（推荐）</h5>
+      <p>Ubuntu 22.04 LTS + <strong>ROS2 Humble</strong> + MoveIt2 + Gazebo Ignition</p>
+      <p style="font-size:.82rem;color:var(--text-muted);">这是2026年最稳定、社区最活跃的组合。官方支持到2027年。</p>
+    </div>
+    <div class="col col-b">
+      <h5>❌ 错误组合（避免）</h5>
+      <p>Ubuntu 24.04 + ROS2 Humble → <strong>不兼容！</strong></p>
+      <p>Ubuntu 20.04 + ROS2 Humble → <strong>不兼容！</strong></p>
+      <p style="font-size:.82rem;color:var(--text-muted);">ROS版本和Ubuntu版本是一一对应的，不能混用。</p>
+    </div>
+  </div>
+
+  <h3 id="sec1-4">1.4 视觉库</h3>
+
+  <table>
+    <tr><th>库名</th><th>版本</th><th>用途</th><th>学习时间</th><th>替代方案</th></tr>
+    <tr>
+      <td><strong>OpenCV</strong></td>
+      <td>4.8+</td>
+      <td>图像读取/显示/预处理、颜色空间转换、特征提取、相机标定</td>
+      <td>2-3周（基础）</td>
+      <td>scikit-image（功能较弱）</td>
+    </tr>
+    <tr>
+      <td><strong>PCL</strong>（Point Cloud Library）</td>
+      <td>1.13+</td>
+      <td>点云滤波、配准、分割、特征提取、表面重建</td>
+      <td>3-4周</td>
+      <td>Open3D（Python更友好）</td>
+    </tr>
+    <tr>
+      <td><strong>Open3D</strong></td>
+      <td>0.18+</td>
+      <td>RGB-D数据处理、点云可视化、ICP配准、TSDF融合</td>
+      <td>1-2周</td>
+      <td>PCL（功能更全但C++ API为主）</td>
+    </tr>
+    <tr>
+      <td><strong>cv_bridge</strong></td>
+      <td>ROS2自带</td>
+      <td>ROS2图像消息（sensor_msgs/Image）与OpenCV Mat格式互转</td>
+      <td>半天</td>
+      <td>手动转换（不推荐）</td>
+    </tr>
+    <tr>
+      <td><strong>image_pipeline</strong></td>
+      <td>ROS2自带</td>
+      <td>相机标定（camera_calibration）、畸变矫正、深度图对齐</td>
+      <td>1周</td>
+      <td>MATLAB标定工具箱</td>
+    </tr>
+  </table>
+
+  <p><strong>建议：</strong>优先使用 <strong>Open3D</strong> 而不是 PCL 做点云处理。Open3D的Python API更直观，文档更好，社区活跃。PCL虽然功能更强但C++ API为主，学习曲线陡峭。对于拆包项目中的点云聚类、抓取点计算等任务，Open3D完全够用。</p>
+
+  <h3 id="sec1-5">1.5 机械臂控制库</h3>
+
+  <table>
+    <tr><th>库名</th><th>用途</th><th>学习时间</th><th>常见坑</th></tr>
+    <tr>
+      <td><strong>MoveIt2</strong></td>
+      <td>运动规划（Motion Planning）：给定目标位姿，规划无碰撞轨迹。ROS2中最核心的机械臂控制框架。</td>
+      <td>3-4周</td>
+      <td>默认使用KDL运动学求解器，求解成功率低。建议替换为TracIK。</td>
+    </tr>
+    <tr>
+      <td><strong>TracIK</strong></td>
+      <td>逆运动学（IK）求解器：MoveIt2的"数学引擎"。比默认KDL更稳定、求解成功率更高。</td>
+      <td>1天（配置）</td>
+      <td>编译需要安装依赖libnlopt-dev。某些极端的奇异点附近仍会失败。</td>
+    </tr>
+    <tr>
+      <td><strong>ros2_control</strong></td>
+      <td>硬件抽象层：定义统一的控制器接口（位置控制/速度控制/力控制），连接MoveIt2与真实机械臂驱动。</td>
+      <td>2-3周</td>
+      <td>每个机械臂品牌的ros2_control驱动质量参差不齐。UR和Franka的驱动最完善。</td>
+    </tr>
+    <tr>
+      <td><strong>Cartesian Planner</strong>（笛卡尔运动规划器）</td>
+      <td>笛卡尔空间直线/圆弧轨迹生成：让机械臂末端沿直线运动（如沿拉链方向撕开塑料袋）。</td>
+      <td>1周</td>
+      <td>MoveIt2内建支持，但需要正确配置pilz_industrial_motion_planner。</td>
+    </tr>
+  </table>
+
+  <h3 id="sec1-6">1.6 深度学习框架</h3>
+
+  <table>
+    <tr><th>框架</th><th>优势</th><th>劣势</th><th>拆包项目适用场景</th><th>推荐度</th></tr>
+    <tr>
+      <td><strong>PyTorch</strong></td>
+      <td>Python生态最好、动态图调试方便、社区最活跃、模型部署工具（TorchScript/ONNX）完善</td>
+      <td>移动端部署不如TensorFlow Lite成熟</td>
+      <td>YOLOv8训练/推理、SAM2部署、GraspNet推理</td>
+      <td><span class="tag algo">强烈推荐</span></td>
+    </tr>
+    <tr>
+      <td>TensorFlow</td>
+      <td>生产部署（TF Serving）、移动端（TF Lite）</td>
+      <td>API割裂（TF1 vs TF2）、社区活力下降、新模型发布以PyTorch为主</td>
+      <td>不适用于本项目</td>
+      <td><span class="tag hw">不推荐</span></td>
+    </tr>
+  </table>
+
+  <p><strong>为什么选PyTorch：</strong>2024年之后的计算机视觉和机器人抓取论文，95%以上使用PyTorch实现。如果你选TensorFlow，你会发现在部署GraspNet、SAM2、FoundationPose时需要反复做模型转换，并且经常遇到算子不支持的问题。</p>
+
+  <p><strong>推理加速补充：</strong>在训练完成后，为了提高推理速度，建议使用 <strong>TensorRT</strong>（NVIDIA GPU）或 <strong>ONNX Runtime</strong>（跨平台）部署模型。YOLOv8官方支持导出为TensorRT格式，推理速度可提升3-5倍。</p>
+
+</section>
+
+<!-- ═══════════════════════════════════════════
+     模块 2：硬件选型详细指南
+     ═══════════════════════════════════════════ -->
+<section id="sec2">
+  <h2><span class="section-num">2</span> 硬件选型详细指南</h2>
+
+  <p>硬件选型是决定项目成败的第一个关键决策。选错了硬件，后续所有的软件工作都可能白费。本章按照"深度相机 → 机械臂 → 末端执行器 → 灵巧手 → 完整BOM"的顺序，逐一给出推荐型号、对比参数和选型理由。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧩 注意事项</div>
+    <ul>
+      <li><strong>先仿真后采购：</strong>在花几万块钱买硬件之前，请务必先在Gazebo仿真中完成模块6的阶段0和阶段1。仿真能帮你验证机械臂选型是否满足工作空间要求。</li>
+      <li><strong>采购渠道：</strong>国内优先通过官方代理采购（有售后和技术支持）。淘宝/闲鱼上的二手设备便宜但无售后，不建议购买。</li>
+      <li><strong>交期预留：</strong>工业机械臂（尤其是UR、AUBO）交期通常4-8周。请提前下单，避免硬件到了项目已经延期。</li>
+      <li><strong>安全第一：</strong>所有硬件安装时注意接地、急停按钮位置、防护围栏。协作机器人虽然标榜"安全"，但在高速运动时仍有致伤风险。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec2-1">2.1 深度相机</h3>
+
+  <p><strong>深度相机是什么：</strong>深度相机（RGB-D Camera）是一种能同时输出彩色图像（RGB）和深度图像（每个像素到相机的距离）的传感器。在拆包场景中，深度相机用于：① 定位物料框和塑料袋的三维位置；② 生成点云用于抓取点计算；③ 检测物料的堆叠情况。</p>
+
+  <div class="compare-box">
+    <div class="col col-a">
+      <h5>📷 为什么不能用普通RGB相机？</h5>
+      <p>普通RGB相机只能提供二维图像，无法知道"塑料袋离相机多远"。虽然可以通过单目深度估计算法（如Depth Anything V2）估算深度，但精度（厘米级）不如真正的深度相机（毫米级），且需要额外GPU算力。</p>
+    </div>
+    <div class="col col-b">
+      <h5>📐 深度相机原理简介</h5>
+      <p>主流深度相机分三类：<strong>结构光</strong>（投射红外光斑，如RealSense D435i）、<strong>ToF飞行时间</strong>（发射光脉冲测返回时间）、<strong>双目立体</strong>（两个RGB相机视差计算深度）。结构光在室内近距离（0.3-3m）精度最高，最适合拆包场景。</p>
+    </div>
+  </div>
+
+  <table>
+    <tr><th>型号</th><th>深度技术</th><th>深度范围</th><th>深度精度</th><th>FOV(H×V)</th><th>帧率</th><th>参考价格(CNY)</th><th>室内/室外</th><th>推荐场景</th></tr>
+    <tr>
+      <td><strong>Intel RealSense D435i</strong></td>
+      <td>主动立体红外</td>
+      <td>0.3m - 3m</td>
+      <td>≤2% @ 2m</td>
+      <td>87°×58°</td>
+      <td>90fps</td>
+      <td>¥2,500-3,500</td>
+      <td>室内为主</td>
+      <td><span class="tag algo">首选推荐</span> 性价比最优，ROS2驱动成熟</td>
+    </tr>
+    <tr>
+      <td><strong>奥比中光 Gemini 2</strong></td>
+      <td>结构光</td>
+      <td>0.3m - 3.5m</td>
+      <td>≤2% @ 2m</td>
+      <td>91°×66°</td>
+      <td>30fps</td>
+      <td>¥1,500-2,500</td>
+      <td>室内</td>
+      <td><span class="tag hw">低成本替代</span> 国产方案，价格优势明显</td>
+    </tr>
+    <tr>
+      <td><strong>Azure Kinect DK</strong></td>
+      <td>ToF</td>
+      <td>0.5m - 3.86m</td>
+      <td>≤1% @ 2m</td>
+      <td>75°×65°</td>
+      <td>30fps</td>
+      <td>已停产（二手¥4,000-6,000）</td>
+      <td>室内/室外</td>
+      <td><span class="tag hw">谨慎</span> 精度最高但已停产，备件难购买</td>
+    </tr>
+  </table>
+
+  <p><strong>为什么首推 Intel RealSense D435i：</strong></p>
+  <ol>
+    <li><strong>ROS2驱动最成熟：</strong>Intel官方维护 <code>realsense-ros</code> 包，直接支持ROS2 Humble，开箱即用（apt install 即可）。奥比中光需要手动编译SDK。</li>
+    <li><strong>内置IMU：</strong>D435i的IMU（惯性测量单元）可以用于视觉惯性里程计（VIO），在机械臂运动时补偿相机抖动。</li>
+    <li><strong>全球发货、渠道稳定：</strong>不会像Azure Kinect那样突然停产。售后和技术支持完善。</li>
+    <li><strong>社区支持：</strong>遇到问题搜索"RealSense D435i + ROS2"能找到大量解决方案。</li>
+  </ol>
+
+  <div class="new-team-tip">
+    <div class="tip-title">📷 相机安装与标定注意事项</div>
+    <ul>
+      <li><strong>安装方式：</strong>推荐 <strong>Eye-to-Hand</strong>（相机固定在工作台正上方，俯视物料框）。优点是相机视场稳定、标定一次长期有效。Eye-in-Hand（相机装在机械臂末端）虽然灵活但每次运动后需要重新计算坐标系，增加延迟。</li>
+      <li><strong>安装高度：</strong>建议相机距离物料框表面50-80cm。太近视场不够（看不全整个物料框），太远深度精度下降。</li>
+      <li><strong>安装角度：</strong>相机光轴与物料框表面夹角≤15°（近乎垂直）。大角度倾斜会导致塑料袋表面深度值偏差增大，影响抓取点精度。</li>
+      <li><strong>环境光：</strong>红外结构光相机（D435i）在阳光直射下性能严重下降（阳光中的红外成分干扰结构光图案）。请确保工作区域在室内，避免阳光直射。如果必须在强光环境下工作，考虑加装遮光罩或改用ToF相机。</li>
+      <li><strong>标定需求：</strong>相机内参标定（出厂已做，但建议每3个月重新标定一次）、手眼标定（获取相机到机械臂基坐标系的变换矩阵，这是视觉引导抓取的数学基础）。</li>
+      <li><strong>补光灯：</strong>塑料袋是透明的，在弱光下深度相机可能"穿透"塑料袋而测到袋内物料的深度。建议在工作区上方加装均匀的白色LED补光灯（照度500-1000 lux），增加塑料袋表面的红外纹理。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec2-2">2.2 机械臂</h3>
+
+  <p><strong>机械臂是什么：</strong>机械臂（Robot Arm）是一种多关节的机械装置，能够模拟人类手臂的运动。在我们项目中，机械臂负责：移动到物料框上方、抓取塑料袋、将塑料袋移出框外、完成拆袋动作、取出并放置物料。</p>
+
+  <p><strong>关键参数解释：</strong></p>
+  <ul>
+    <li><strong>自由度（DOF）：</strong>关节数量。6轴 = 6个旋转关节 = 能够在三维空间中到达任意位置和任意姿态（即有6个独立运动维度：x, y, z, roll, pitch, yaw）。对于拆包场景，6轴完全够用。5轴虽然便宜但无法实现某些姿态（如倾斜抓取），不建议。</li>
+    <li><strong>负载（Payload）：</strong>机械臂末端能安全携带的最大重量。建议负载 ≥ 预估物料重量×2+末端执行器重量。单件物料+塑料袋通常不超过2kg，加末端执行器约1-2kg，合计约3-4kg。选≥5kg负载的机械臂。</li>
+    <li><strong>臂展（Reach）：</strong>机械臂完全伸展时从基座到末端的距离。需要确保臂展能覆盖整个工作台面。物料框60cm×40cm，工作台约1m×0.8m，建议臂展≥800mm。</li>
+    <li><strong>重复定位精度：</strong>机械臂多次运动到同一目标位置的偏差。对于抓取塑料袋，±0.1mm的精度绰绰有余。工业生产中±0.03mm到±0.1mm都是常见精度。</li>
+  </ul>
+
+  <table>
+    <tr><th>型号</th><th>自由度</th><th>负载</th><th>臂展</th><th>重复精度</th><th>参考价格(CNY)</th><th>ROS2支持</th><th>推荐场景</th></tr>
+    <tr>
+      <td><strong>Universal Robots UR5e</strong></td>
+      <td>6轴</td>
+      <td>5kg</td>
+      <td>850mm</td>
+      <td>±0.03mm</td>
+      <td>¥180,000-220,000</td>
+      <td>官方驱动，最完善</td>
+      <td><span class="tag algo">首选推荐</span> 工业标杆，最省心</td>
+    </tr>
+    <tr>
+      <td><strong>AUBO i5</strong></td>
+      <td>6轴</td>
+      <td>5kg</td>
+      <td>886mm</td>
+      <td>±0.05mm</td>
+      <td>¥80,000-120,000</td>
+      <td>社区驱动，质量可接受</td>
+      <td><span class="tag algo">性价比首选</span> 国产协作臂</td>
+    </tr>
+  </table>
+
+  <p><strong>为什么推荐这两款：</strong>UR5e是协作机器人的行业标杆，ROS2驱动由Universal Robots官方维护（通过ur_robot_driver包），MoveIt2集成最成熟。AUBO i5是国产协作臂中性价比较高的选择，价格约为UR5e的一半，臂展和负载与UR5e相当，适合预算有限的团队。</p>
+
+  <div class="card orange">
+    <h4>⚠️ 协作机器人 vs 工业机器人</h4>
+    <p><strong>协作机器人（Cobot）：</strong>设计为与人近距离协作，具有力传感器和碰撞检测，碰到人会停止。UR5e和AUBO i5都属于此类。<strong>推荐选择协作机器人</strong>——不需要安全围栏、部署灵活、调试时风险低。</p>
+    <p><strong>工业机器人：</strong>速度快、精度高，但<strong>力量大、无碰撞检测、必须装在安全围栏内</strong>。风险较高，因为调试阶段的碰撞可能导致设备损坏或人员受伤。</p>
+  </div>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🦾 机械臂使用注意事项</div>
+    <ul>
+      <li><strong>仿真与实物的差异：</strong>Gazebo中的机械臂是"理想物理模型"——关节无摩擦、连杆无弹性、传感器无噪声。真实机械臂受重力、关节摩擦、电机齿隙等影响，运动轨迹可能略有偏差。在仿真中验证逻辑没问题后再上实物，但不要期望仿真和实物完全一致。</li>
+      <li><strong>安全工作空间：</strong>在MoveIt2中配置机械臂的"关节限位"和"工作空间边界"，防止机械臂运动到危险区域（如撞到桌子、相机支架等）。</li>
+      <li><strong>碰撞检测灵敏度：</strong>协作臂的碰撞检测需要根据应用调整。太灵敏会在正常接触塑料袋时误触发停止；太不灵敏又失去了安全保护意义。建议从默认的中间档位开始，逐步调整。</li>
+      <li><strong>奇异点（Singularity）：</strong>某些位置虽然在工作空间内，但运动学求解器无法为所有6个关节找到唯一解。表现为机械臂运动到某些位置时突然"卡住"或速度异常。在运动规划时避开奇异点附近区域。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec2-3">2.3 末端执行器（End Effector）</h3>
+
+  <p><strong>末端执行器是什么：</strong>装在机械臂末端的"手"，用于直接操作物体。在拆包项目中，末端执行器承担两个关键任务：① <strong>抓取塑料袋</strong>（需要轻柔、大面积吸附）；② <strong>抓取物料</strong>（需要精确、有力夹持）。</p>
+
+  <h4>2.3.1 抓取塑料袋：吸盘方案</h4>
+
+  <table>
+    <tr><th>吸盘类型</th><th>特点</th><th>适用场景</th><th>参考价格</th></tr>
+    <tr>
+      <td><strong>海绵吸盘（风琴型）</strong></td>
+      <td>柔软、可压缩、能贴合不规则曲面</td>
+      <td><span class="tag algo">推荐</span> 塑料袋表面不平整时首选</td>
+      <td>¥50-150/个</td>
+    </tr>
+    <tr>
+      <td>普通扁平吸盘</td>
+      <td>便宜、但要求被吸附面平整</td>
+      <td>不推荐（塑料袋表面褶皱多）</td>
+      <td>¥20-50/个</td>
+    </tr>
+    <tr>
+      <td>多孔海绵吸盘</td>
+      <td>多个小吸孔、吸附面积大</td>
+      <td>大塑料袋或需要大面积吸附</td>
+      <td>¥200-500/个</td>
+    </tr>
+  </table>
+
+  <p><strong>吸盘选型建议：</strong></p>
+  <ul>
+    <li><strong>口径：</strong>推荐φ20mm-φ30mm。太小吸附力不够，太大可能同时吸附到袋内物料。</li>
+    <li><strong>数量：</strong>2-4个吸盘并联，增加吸附冗余。单个吸盘可能因塑料袋褶皱漏气而脱落，多个吸盘并联后即使1-2个漏气仍能维持真空。</li>
+    <li><strong>品牌推荐：</strong>Schmalz（德国，品质最好但贵）、SMC（日本，性价比高）、台湾气立可（廉价替代）。</li>
+  </ul>
+
+  <h4>2.3.2 拆袋/取料阶段：是否需要切换末端？</h4>
+
+  <p>这是一个关键的设计决策。有两条路线：</p>
+
+  <div class="compare-box">
+    <div class="col col-a">
+      <h5>路线A：复合末端</h5>
+      <p>同一末端上同时安装吸盘和夹爪。吸盘负责抓塑料袋，夹爪负责取物料。不需要切换工具，减少机械复杂度。</p>
+      <p><strong>优点：</strong>不需要工具快换系统，机械结构简单，控制逻辑清晰。</p>
+      <p><strong>缺点：</strong>末端变重（影响有效负载），吸盘和夹爪可能互相干涉。</p>
+    </div>
+    <div class="col col-b">
+      <h5>路线B：可切换末端（进阶）</h5>
+      <p>使用工具快换系统（如ATI QC系列），在吸盘模块和夹爪模块之间自动切换。</p>
+      <p><strong>优点：</strong>每个末端都可以优化设计，不互相干扰。</p>
+      <p><strong>缺点：</strong>快换系统本身增加成本（¥5,000-15,000）和重量，切换动作增加节拍时间。</p>
+    </div>
+  </div>
+
+  <h4>2.3.3 气路系统完整清单</h4>
+
+  <p>如果选择吸盘方案，你需要以下完整气路组件：</p>
+
+  <table>
+    <tr><th>组件</th><th>数量</th><th>预估单价</th><th>备注</th></tr>
+    <tr><td>空压机（静音型）</td><td>1台</td><td>¥2,000-5,000</td><td>供气压力≥0.7MPa，流量≥50L/min。选择静音型（≤60dB）减少噪音。</td></tr>
+    <tr><td>真空发生器（多级）</td><td>1-2个</td><td>¥300-800/个</td><td>将正压气转为真空。推荐SMC ZM系列或PIAB piINLINE。</td></tr>
+    <tr><td>电磁阀（3位5通）</td><td>2-3个</td><td>¥200-500/个</td><td>控制真空气路的通断和吹气。需要中位封闭功能。</td></tr>
+    <tr><td>真空压力开关/传感器</td><td>1个</td><td>¥300-800</td><td>检测真空度是否达标（-60kPa以下），用于判断是否成功抓取。</td></tr>
+    <tr><td>气管（PU材质）</td><td>若干米</td><td>¥5-10/m</td><td>外径φ6mm或φ8mm。PU比尼龙管软，适合机械臂运动。</td></tr>
+    <tr><td>气管接头</td><td>若干</td><td>¥5-15/个</td><td>快插式接头，与气管外径匹配。</td></tr>
+    <tr><td>过滤器+调节阀</td><td>1套</td><td>¥200-500</td><td>过滤压缩空气中的水和油，保护真空发生器。</td></tr>
+    <tr><td>消音器</td><td>2-4个</td><td>¥10-30/个</td><td>装在电磁阀排气口，减少排气噪音。</td></tr>
+  </table>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🔧 气路系统注意事项</div>
+    <ul>
+      <li><strong>如果不想搞气路：</strong>可以使用 <strong>电动真空吸盘</strong>（内置真空泵，只需供电不需要气路）。如Robotiq EPick、OnRobot VG10。价格约¥5,000-15,000/个，但省去了空压机、电磁阀、气管等全部气路设备，调试时间大幅缩短。对于2人微型团队，强烈建议选电动方案。</li>
+      <li><strong>真空度监控：</strong>必须安装真空压力传感器，通过ROS2节点读取真空度数值。这比"盲猜吸没吸住"可靠100倍。</li>
+      <li><strong>吹气释放：</strong>电磁阀需要支持吹气功能（正压通入吸盘），否则塑料袋可能粘在吸盘上无法释放。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec2-4">2.4 灵巧手：是否有必要？</h3>
+
+  <p><strong>灵巧手是什么：</strong>灵巧手（Dexterous Hand）是一种多指（2-5指）的拟人化夹爪，每个手指可以独立控制，能完成精细操作。如Robotiq 2F-85（2指自适应夹爪）、Shadow Dexterous Hand（5指灵巧手）。</p>
+
+  <div class="card orange">
+    <h4>结论：不需要灵巧手</h4>
+    <p>对于"从塑料袋中取出物料"这个任务，<strong>不需要</strong>灵巧手。理由如下：</p>
+    <ol>
+      <li>物料可以直接通过"抖动"或"重力"从撕开的塑料袋中掉出（模块5会详细讲解）</li>
+      <li>灵巧手的控制复杂度是指数级的——2指灵巧手需要控制抓取力、位置、速度；5指需要协调20+个自由度</li>
+      <li>灵巧手价格昂贵（Robotiq 2F-85约¥25,000-35,000，Shadow Hand约¥500,000+）</li>
+    </ol>
+    <p><strong>替代方案：</strong>摩擦夹爪（平行夹爪） + 抖动动作：先用夹爪抓住撕开的塑料袋边缘，然后快速上下抖动，物料靠重力从袋中掉出。</p>
+  </div>
+
+  <h3 id="sec2-5">2.5 完整硬件BOM表</h3>
+
+  <p>下面是一份"中等预算"的完整硬件采购清单。可以直接拿这份清单去采购。</p>
+
+  <table>
+    <tr><th>序号</th><th>物料名称</th><th>推荐型号</th><th>数量</th><th>预估单价(CNY)</th><th>小计(CNY)</th><th>采购渠道</th><th>替代型号</th></tr>
+    <tr><td>1</td><td>深度相机</td><td>Intel RealSense D435i</td><td>1</td><td>¥3,000</td><td>¥3,000</td><td>京东/淘宝Intel旗舰店</td><td>奥比中光Gemini 2</td></tr>
+    <tr><td>2</td><td>协作机械臂</td><td>AUBO i5</td><td>1</td><td>¥100,000</td><td>¥100,000</td><td>AUBO官方代理</td><td>UR5e（预算翻倍）</td></tr>
+    <tr><td>3</td><td>电动真空吸盘</td><td>Robotiq EPick</td><td>1</td><td>¥8,000</td><td>¥8,000</td><td>Robotiq官方代理</td><td>OnRobot VG10</td></tr>
+    <tr><td>4</td><td>平行夹爪</td><td>Robotiq 2F-85</td><td>1</td><td>¥28,000</td><td>¥28,000</td><td>Robotiq官方代理</td><td>DH-3（¥12,000）</td></tr>
+    <tr><td>5</td><td>工控机/PC</td><td>自配（i9+RTX 4070+32GB RAM）</td><td>1</td><td>¥15,000</td><td>¥15,000</td><td>京东/淘宝装机店</td><td>NVIDIA Jetson AGX Orin（¥25,000）</td></tr>
+    <tr><td>6</td><td>显示器</td><td>任意24寸</td><td>1</td><td>¥1,000</td><td>¥1,000</td><td>京东</td><td>-</td></tr>
+    <tr><td>7</td><td>工作台</td><td>铝型材定制</td><td>1</td><td>¥3,000</td><td>¥3,000</td><td>淘宝铝型材加工店</td><td>重型工作桌</td></tr>
+    <tr><td>8</td><td>相机支架</td><td>铝型材+角码自制</td><td>1</td><td>¥300</td><td>¥300</td><td>淘宝</td><td>摄影三脚架（临时）</td></tr>
+    <tr><td>9</td><td>补光灯</td><td>LED平板灯40W</td><td>2</td><td>¥200</td><td>¥400</td><td>淘宝</td><td>环形LED灯</td></tr>
+    <tr><td>10</td><td>物料框</td><td>塑料/金属物料框60×40×30cm</td><td>3</td><td>¥100</td><td>¥300</td><td>淘宝/1688</td><td>-</td></tr>
+    <tr><td>11</td><td>塑料袋（测试用）</td><td>PE透明自封袋（多种尺寸）</td><td>100+</td><td>¥0.5</td><td>¥50</td><td>淘宝</td><td>-</td></tr>
+    <tr><td>12</td><td>模拟物料（测试用）</td><td>金属件/塑料块（不规则形状）</td><td>20+</td><td>-</td><td>¥200</td><td>自备或淘宝</td><td>-</td></tr>
+    <tr><td>13</td><td>标定板</td><td>ChArUco棋盘格（A3打印+硬板）</td><td>1</td><td>¥50</td><td>¥50</td><td>打印店+泡沫板</td><td>圆网格标定板</td></tr>
+    <tr><td>14</td><td>安全防护</td><td>急停按钮+防护网</td><td>1套</td><td>¥1,000</td><td>¥1,000</td><td>淘宝</td><td>-</td></tr>
+    <tr><td>15</td><td>工具耗材</td><td>内六角扳手、扎带、电工胶布等</td><td>1套</td><td>¥500</td><td>¥500</td><td>淘宝/五金店</td><td>-</td></tr>
+    <tr><td colspan="5" style="text-align:right;"><strong>合计（AUBO方案）</strong></td><td><strong>¥160,800</strong></td><td colspan="2"></td></tr>
+    <tr><td colspan="5" style="text-align:right;"><strong>合计（UR5e方案）</strong></td><td><strong>¥260,800</strong></td><td colspan="2"></td></tr>
+  </table>
+
+  <div class="card green">
+    <h4>💡 预算压缩建议</h4>
+    <ul>
+      <li><strong>最低预算方案（约¥30,000-50,000）：</strong>使用二手UR3e（臂展500mm，但小工作台够用）+ 奥比中光相机 + 淘宝廉价平行夹爪（¥2,000）+ 电动真空吸盘。去掉灵巧手。</li>
+      <li><strong>如果连机械臂都买不起：</strong>先在仿真中完成全部开发和验证（Gazebo模拟完整拆包流程），拿到成果后再申请预算购买实物。仿真先行策略可以0成本验证90%的技术可行性。</li>
+    </ul>
+  </div>
+
+</section>
+
+<!-- ═══════════════════════════════════════════
+     模块 3：任务模式拆解（含流程图）
+     ═══════════════════════════════════════════ -->
+<section id="sec3">
+  <h2><span class="section-num">3</span> 任务模式拆解（含流程图）</h2>
+
+  <p>拆包任务看似简单（"把东西从袋子拿出来"），但拆解到工程层面需要精确地定义<strong>每个步骤的输入、输出、和失败处理策略</strong>。本章将整个拆包流程拆解为9个独立的子任务（T1-T9），每个子任务有明确的职责边界。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧩 注意事项</div>
+    <ul>
+      <li><strong>每个子任务都是独立的ROS2节点：</strong>这样做的好处是每个节点可以独立开发、独立测试、独立调试。不要让所有逻辑塞在一个巨大的Python脚本里。</li>
+      <li><strong>失败处理不能是"报警并停止"：</strong>在真实产线中，"报警停机"意味着每次失败都需要人工介入。更合理的设计是"失败→重试→降级→报警"，让系统尽可能自恢复。</li>
+      <li><strong>状态机先画图再写代码：</strong>在写任何一行代码之前，先在本子上画出完整的状态转换图（状态→条件→下一状态）。状态机没想清楚就写代码，后期会变成"意大利面条逻辑"。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec3-1">3.1 任务分解表</h3>
+
+  <table>
+    <tr><th>子任务ID</th><th>任务名称</th><th>输入</th><th>输出</th><th>失败处理策略</th><th>预估耗时</th></tr>
+    <tr>
+      <td><strong>T1</strong></td>
+      <td>框内物料检测</td>
+      <td>RGB-D图像（sensor_msgs/Image + sensor_msgs/PointCloud2）</td>
+      <td>物料位置(x,y,z)、塑料袋关键点（4角坐标）、塑料袋实例掩码</td>
+      <td>未检测到时：①调整补光灯亮度 ②发布物料框旋转指令（如有旋转机构）③重试3次后报警提示人工检查</td>
+      <td>0.5-1.5s</td>
+    </tr>
+    <tr>
+      <td><strong>T2</strong></td>
+      <td>塑料袋抓取点选取</td>
+      <td>T1输出的点云+塑料袋掩码</td>
+      <td>最优抓取点坐标(x,y,z)+抓取姿态四元数(qx,qy,qz,qw)+抓取质量评分</td>
+      <td>无有效抓取点（点云缺失/塑料袋严重变形）：①尝试备用抓取点（掩码中心点）②如有旋转机构，旋转物料框重试 ③报警</td>
+      <td>0.2-0.5s</td>
+    </tr>
+    <tr>
+      <td><strong>T3</strong></td>
+      <td>机械臂运动规划</td>
+      <td>起点（当前关节角）+终点（T2抓取点位姿）</td>
+      <td>无碰撞轨迹（JointTrajectory）或规划失败</td>
+      <td>失败时：①换IK求解器（KDL→TracIK）②添加中间过渡点（waypoint）③调整目标姿态偏移5-10° ④重试3次后报警</td>
+      <td>0.5-2s</td>
+    </tr>
+    <tr>
+      <td><strong>T4</strong></td>
+      <td>抓取塑料袋</td>
+      <td>T3轨迹+吸盘控制指令</td>
+      <td>抓取成功/失败标志（真空压力传感器读数）</td>
+      <td>失败时：①检查真空度未达标→延长吸附时间 ②调整接近位姿偏移2-3mm重试 ③重试不同角度（旋转5°）④3次失败后报警</td>
+      <td>3-5s</td>
+    </tr>
+    <tr>
+      <td><strong>T5</strong></td>
+      <td>移出物料框</td>
+      <td>已抓取的塑料袋</td>
+      <td>塑料袋悬空于物料框上方（安全高度≥15cm）</td>
+      <td>运动中检测到碰撞→立即停止→沿原路返回→重新规划避障路径</td>
+      <td>2-3s</td>
+    </tr>
+    <tr>
+      <td><strong>T6</strong></td>
+      <td>拆/破塑料袋</td>
+      <td>悬空的完整塑料袋</td>
+      <td>塑料袋开口（足以让物料掉出的孔洞）</td>
+      <td>撕裂失败时：①调整撕裂方向和力度 ②切换方法（撕裂→切割如装有刀片）③记录塑料袋类型用于后续优化</td>
+      <td>3-8s</td>
+    </tr>
+    <tr>
+      <td><strong>T7</strong></td>
+      <td>取出内部物料</td>
+      <td>开口塑料袋+袋内物料</td>
+      <td>物料与塑料袋分离</td>
+      <td>物料掉落时→记录掉落位置→如仍在工作台则用夹爪重新捡取→如掉落地面则报警+人工处理</td>
+      <td>2-5s</td>
+    </tr>
+    <tr>
+      <td><strong>T8</strong></td>
+      <td>放置物料</td>
+      <td>已分离的物料</td>
+      <td>物料放置于指定区域（确认放置完成）</td>
+      <td>放置位置偏差→使用视觉确认放置后位置→偏差超过阈值则调整重放</td>
+      <td>2-3s</td>
+    </tr>
+    <tr>
+      <td><strong>T9</strong></td>
+      <td>丢弃塑料袋</td>
+      <td>空塑料袋</td>
+      <td>塑料袋放入垃圾回收区</td>
+      <td>吸盘释放失败→启动吹气→仍失败则移动到垃圾区上方抖动释放</td>
+      <td>1-2s</td>
+    </tr>
+  </table>
+
+  <h3 id="sec3-2">3.2 主流程图</h3>
+
+  <div class="flow">
+╔══════════════════════════════════════════════════════════════╗
+║              机械臂拆包主流程（Main Pipeline）                ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  [START]                                                      ║
+║     │                                                         ║
+║     ▼                                                         ║
+║  ┌──────────┐  失败→重试≤3次   ┌─────────────────┐           ║
+║  │ T1: 检测  │────────────────▶│ 报警：物料框为空  │           ║
+║  │ 物料+袋   │                 └─────────────────┘           ║
+║  └────┬─────┘                                                ║
+║       │ 成功                                                  ║
+║       ▼                                                       ║
+║  ┌──────────┐  失败→降级策略   ┌─────────────────┐           ║
+║  │ T2: 选取  │────────────────▶│ 使用掩码中心点   │           ║
+║  │ 抓取点    │                 │ 作为抓取点       │           ║
+║  └────┬─────┘                 └────────┬────────┘           ║
+║       │ 成功                            │                     ║
+║       ▼                                 ▼                     ║
+║  ┌──────────┐  失败→换求解器   ┌─────────────────┐           ║
+║  │ T3: 运动  │────────────────▶│ TracIK / 添加    │           ║
+║  │ 规划      │                 │ 过渡点重试       │           ║
+║  └────┬─────┘                 └────────┬────────┘           ║
+║       │ 成功                            │                     ║
+║       ▼                                 ▼                     ║
+║  ┌──────────┐  失败→重试≤3次   ┌─────────────────┐           ║
+║  │ T4: 抓取  │────────────────▶│ 报警：抓取失败   │           ║
+║  │ 塑料袋    │                 │ 人工处理         │           ║
+║  └────┬─────┘                 └─────────────────┘           ║
+║       │ 成功                                                  ║
+║       ▼                                                       ║
+║  ┌──────────┐  碰撞→停止+重规划                               ║
+║  │ T5: 移出  │────────────────▶ [重规划避障路径]              ║
+║  │ 物料框    │                                                ║
+║  └────┬─────┘                                                ║
+║       │ 成功                                                  ║
+║       ▼                                                       ║
+║  ┌──────────┐  失败→切换方法   ┌─────────────────┐           ║
+║  │ T6: 拆袋  │────────────────▶│ 热切割 / 刀片   │           ║
+║  │ （撕裂）   │                 │ 替代方案         │           ║
+║  └────┬─────┘                 └────────┬────────┘           ║
+║       │ 成功                            │                     ║
+║       ▼                                 ▼                     ║
+║  ┌──────────┐  掉落→记录+重试   ┌─────────────────┐           ║
+║  │ T7: 取料  │────────────────▶│ 夹爪重新捡取     │           ║
+║  │ 分离      │                 │ / 人工介入        │           ║
+║  └────┬─────┘                 └─────────────────┘           ║
+║       │ 成功                                                  ║
+║       ▼                                                       ║
+║  ┌──────────┐  偏差→视觉确认+调整                              ║
+║  │ T8: 放置  │────────────────▶ [重新放置]                    ║
+║  │ 物料      │                                                ║
+║  └────┬─────┘                                                ║
+║       │ 成功                                                  ║
+║       ▼                                                       ║
+║  ┌──────────┐  释放失败→吹气+抖动                              ║
+║  │ T9: 丢弃  │────────────────▶ [吹气+抖动释放]               ║
+║  │ 塑料袋    │                                                ║
+║  └────┬─────┘                                                ║
+║       │                                                       ║
+║       ▼                                                       ║
+║    [END]  → 回到 T1 处理下一个物料                             ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+  </div>
+
+  <h3 id="sec3-3">3.3 状态机伪代码</h3>
+
+  <pre><code><span class="hl-cm">#!/usr/bin/env python3</span>
+<span class="hl-cm"># 拆包任务状态机（简化版）</span>
+<span class="hl-cm"># 使用 smach 或自定义状态机实现</span>
+
+<span class="hl-kw">import</span> <span class="hl-var">rclpy</span>
+<span class="hl-kw">from</span> <span class="hl-var">rclpy.node</span> <span class="hl-kw">import</span> <span class="hl-var">Node</span>
+<span class="hl-kw">from</span> <span class="hl-var">enum</span> <span class="hl-kw">import</span> <span class="hl-var">Enum</span>
+
+<span class="hl-kw">class</span> <span class="hl-type">TaskState</span>(<span class="hl-var">Enum</span>):
+    <span class="hl-var">IDLE</span> = <span class="hl-str">"idle"</span>                    <span class="hl-cm"># 等待开始信号</span>
+    <span class="hl-var">DETECT</span> = <span class="hl-str">"detect"</span>                <span class="hl-cm"># T1: 检测物料和塑料袋</span>
+    <span class="hl-var">SELECT_GRASP</span> = <span class="hl-str">"select_grasp"</span>  <span class="hl-cm"># T2: 选取抓取点</span>
+    <span class="hl-var">PLAN</span> = <span class="hl-str">"plan"</span>                    <span class="hl-cm"># T3: 运动规划</span>
+    <span class="hl-var">GRASP</span> = <span class="hl-str">"grasp"</span>                  <span class="hl-cm"># T4: 执行抓取</span>
+    <span class="hl-var">LIFT</span> = <span class="hl-str">"lift"</span>                    <span class="hl-cm"># T5: 移出物料框</span>
+    <span class="hl-var">DEBAG</span> = <span class="hl-str">"debag"</span>                  <span class="hl-cm"># T6: 拆/破塑料袋</span>
+    <span class="hl-var">EXTRACT</span> = <span class="hl-str">"extract"</span>              <span class="hl-cm"># T7: 取出物料</span>
+    <span class="hl-var">PLACE</span> = <span class="hl-str">"place"</span>                  <span class="hl-cm"># T8: 放置物料</span>
+    <span class="hl-var">DISPOSE</span> = <span class="hl-str">"dispose"</span>              <span class="hl-cm"># T9: 丢弃塑料袋</span>
+    <span class="hl-var">ERROR</span> = <span class="hl-str">"error"</span>                  <span class="hl-cm"># 错误状态（需人工介入）</span>
+    <span class="hl-var">DONE</span> = <span class="hl-str">"done"</span>                    <span class="hl-cm"># 完成当前物料</span>
+
+<span class="hl-kw">class</span> <span class="hl-type">DebagStateMachine</span>:
+    <span class="hl-kw">def</span> <span class="hl-fn">__init__</span>(<span class="hl-var">self</span>):
+        <span class="hl-var">self</span>.<span class="hl-var">state</span> = <span class="hl-var">TaskState</span>.<span class="hl-var">IDLE</span>
+        <span class="hl-var">self</span>.<span class="hl-var">retry_counts</span> = {}         <span class="hl-cm"># 每个状态的失败计数</span>
+        <span class="hl-var">self</span>.<span class="hl-var">max_retries</span> = <span class="hl-num">3</span>          <span class="hl-cm"># 每个状态最多重试3次</span>
+        <span class="hl-var">self</span>.<span class="hl-var">timeouts</span> = {               <span class="hl-cm"># 每个状态的超时时间（秒）</span>
+            <span class="hl-var">TaskState</span>.<span class="hl-var">DETECT</span>: <span class="hl-num">3</span>,
+            <span class="hl-var">TaskState</span>.<span class="hl-var">SELECT_GRASP</span>: <span class="hl-num">2</span>,
+            <span class="hl-var">TaskState</span>.<span class="hl-var">PLAN</span>: <span class="hl-num">5</span>,
+            <span class="hl-var">TaskState</span>.<span class="hl-var">GRASP</span>: <span class="hl-num">10</span>,
+            <span class="hl-var">TaskState</span>.<span class="hl-var">LIFT</span>: <span class="hl-num">8</span>,
+            <span class="hl-var">TaskState</span>.<span class="hl-var">DEBAG</span>: <span class="hl-num">15</span>,
+        }
+
+    <span class="hl-kw">def</span> <span class="hl-fn">tick</span>(<span class="hl-var">self</span>):
+        <span class="hl-cm">"""主循环：根据当前状态执行对应动作"""</span>
+        <span class="hl-kw">if</span> <span class="hl-var">self</span>.<span class="hl-var">state</span> == <span class="hl-var">TaskState</span>.<span class="hl-var">IDLE</span>:
+            <span class="hl-var">self</span>.<span class="hl-var">state</span> = <span class="hl-var">TaskState</span>.<span class="hl-var">DETECT</span>
+
+        <span class="hl-kw">elif</span> <span class="hl-var">self</span>.<span class="hl-var">state</span> == <span class="hl-var">TaskState</span>.<span class="hl-var">DETECT</span>:
+            <span class="hl-var">result</span> = <span class="hl-var">self</span>.<span class="hl-fn">t1_detect</span>()
+            <span class="hl-kw">if</span> <span class="hl-var">result</span>.<span class="hl-var">success</span>:
+                <span class="hl-var">self</span>.<span class="hl-var">state</span> = <span class="hl-var">TaskState</span>.<span class="hl-var">SELECT_GRASP</span>
+            <span class="hl-kw">else</span>:
+                <span class="hl-var">self</span>.<span class="hl-var">retry_or_fail</span>(<span class="hl-var">TaskState</span>.<span class="hl-var">DETECT</span>)
+
+        <span class="hl-kw">elif</span> <span class="hl-var">self</span>.<span class="hl-var">state</span> == <span class="hl-var">TaskState</span>.<span class="hl-var">SELECT_GRASP</span>:
+            <span class="hl-cm"># ... 以此类推</span>
+            <span class="hl-kw">pass</span>
+
+    <span class="hl-kw">def</span> <span class="hl-fn">retry_or_fail</span>(<span class="hl-var">self</span>, <span class="hl-var">task</span>):
+        <span class="hl-var">self</span>.<span class="hl-var">retry_counts</span>[<span class="hl-var">task</span>] = <span class="hl-var">self</span>.<span class="hl-var">retry_counts</span>.<span class="hl-fn">get</span>(<span class="hl-var">task</span>, <span class="hl-num">0</span>) + <span class="hl-num">1</span>
+        <span class="hl-kw">if</span> <span class="hl-var">self</span>.<span class="hl-var">retry_counts</span>[<span class="hl-var">task</span>] >= <span class="hl-var">self</span>.<span class="hl-var">max_retries</span>:
+            <span class="hl-var">self</span>.<span class="hl-var">state</span> = <span class="hl-var">TaskState</span>.<span class="hl-var">ERROR</span>
+            <span class="hl-var">self</span>.<span class="hl-fn">log_and_alert</span>(<span class="hl-str">f"Task {task} failed after {self.max_retries} retries"</span>)</code></pre>
+
+</section>
+
+<!-- ═══════════════════════════════════════════
+     模块 4：算法流程框架（分模块）
+     ═══════════════════════════════════════════ -->
+<section id="sec4">
+  <h2><span class="section-num">4</span> 算法流程框架（分模块）</h2>
+
+  <p>如果说模块3的任务分解是"做什么"，那模块4就是"怎么做"——把每个子任务映射到具体的算法模块，并定义模块之间的数据流。我们将整个系统划分为四个算法层：<strong>感知 → 规划 → 控制 → 决策</strong>。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧩 注意事项</div>
+    <ul>
+      <li><strong>模块间接口比模块内部更重要：</strong>每个模块可以由不同的人独立开发，但接口（消息格式、话题名、坐标系约定）必须在一开始就约定好并写成文档。推荐使用ROS2的<code>.msg</code>和<code>.srv</code>文件定义接口。</li>
+      <li><strong>所有位置数据统一在机械臂基坐标系下：</strong>这是最容易出错的地方。来自相机的坐标在相机坐标系，来自机械臂的坐标在基坐标系，两者需要通过TF变换统一。约定：<strong>所有发布的话题位置都以机械臂基坐标系（base_link）为参考</strong>。</li>
+      <li><strong>每个模块独立可调试：</strong>设计模块时要确保它能独立运行。感知模块应该能在不连机械臂的情况下显示检测结果；规划模块应该能在不连相机的情况下跑预录数据。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec4-1">4.1 感知模块（Perception）</h3>
+
+  <p><strong>感知模块的职责：</strong>从传感器原始数据（RGB-D图像）中提取出有意义的"世界状态"——物料框在哪里？塑料袋在哪里？袋内物料大概在什么位置？塑料袋的哪些位置适合抓取？</p>
+
+  <p><strong>算法管线（Pipeline）：</strong></p>
+
+  <div class="flow">
+  RGB-D 图像（相机）
+      │
+      ▼
+┌─────────────────┐
+│ 1. 目标检测      │  输入: RGB图像 (640×480)
+│   YOLOv8-seg    │  输出: 边界框 + 类别 + 置信度
+└────────┬────────┘
+         │ BBox → Prompt
+         ▼
+┌─────────────────┐
+│ 2. 实例分割      │  输入: RGB图像 + 检测框 (作为SAM2的Prompt)
+│   SAM2          │  输出: 塑料袋逐像素掩码 (Mask)
+└────────┬────────┘
+         │ Mask + 深度图
+         ▼
+┌─────────────────┐
+│ 3. 点云提取      │  输入: 深度图 + 掩码 + 相机内参
+│   (Open3D)      │  输出: 塑料袋区域的3D点云 (N×3)
+└────────┬────────┘
+         │ 3D Point Cloud
+         ▼
+┌─────────────────┐
+│ 4. 抓取点生成    │  输入: 点云 (物体表面)
+│   GraspNet /    │  输出: 抓取位姿 + 置信度 (6-DoF Grasp)
+│   AnyGrasp      │
+└────────┬────────┘
+         │ grasp_pose (geometry_msgs/PoseStamped)
+         ▼
+    [输出到规划模块]
+  </div>
+
+  <p><strong>数据结构示例：</strong></p>
+
+  <pre><code><span class="hl-cm"># 检测结果消息 (DetectionResult.msg) - ROS2自定义消息</span>
+<span class="hl-var">std_msgs</span>/<span class="hl-var">Header</span> <span class="hl-var">header</span>           <span class="hl-cm"># 时间戳 + frame_id (相机坐标系)</span>
+<span class="hl-var">Detection</span>[] <span class="hl-var">detections</span>             <span class="hl-cm"># 检测到的目标列表</span>
+
+<span class="hl-cm"># 单个检测结果</span>
+<span class="hl-var">string</span> <span class="hl-var">class_name</span>                   <span class="hl-cm"># "plastic_bag" / "material_box" / "object"</span>
+<span class="hl-var">float32</span> <span class="hl-var">confidence</span>                  <span class="hl-cm"># 置信度 [0, 1]</span>
+<span class="hl-var">int32</span>[] <span class="hl-var">bbox</span>                        <span class="hl-cm"># [x_min, y_min, x_max, y_max] 像素坐标</span>
+<span class="hl-var">geometry_msgs</span>/<span class="hl-var">Polygon</span> <span class="hl-var">contour</span>      <span class="hl-cm"># 掩码轮廓 (用于计算抓取点)</span>
+<span class="hl-var">geometry_msgs</span>/<span class="hl-var">Point</span> <span class="hl-var">centroid_3d</span>   <span class="hl-cm"># 目标中心三维坐标 (相机坐标系)</span></code></pre>
+
+  <pre><code><span class="hl-cm"># 抓取位姿消息 (GraspPose.msg)</span>
+<span class="hl-var">geometry_msgs</span>/<span class="hl-var">PoseStamped</span> <span class="hl-var">pose</span>   <span class="hl-cm"># 抓取位姿 (base_link坐标系)</span>
+<span class="hl-var">float32</span> <span class="hl-var">quality</span>                      <span class="hl-cm"># 抓取质量评分 [0, 1]</span>
+<span class="hl-var">float32</span> <span class="hl-var">width</span>                        <span class="hl-cm"># 推荐吸盘宽度/夹爪开度 (米)</span>
+<span class="hl-var">string</span> <span class="hl-var">grasp_type</span>                     <span class="hl-cm"># "suction" (吸盘) 或 "parallel_jaw" (夹爪)</span></code></pre>
+
+  <h3 id="sec4-2">4.2 规划模块（Planning）</h3>
+
+  <p><strong>规划模块的职责：</strong>根据感知模块输出的抓取位姿，规划机械臂的无碰撞运动轨迹。从"现在的位置"到"抓住塑料袋"的安全路径。</p>
+
+  <p><strong>两级规划架构：</strong></p>
+
+  <div class="flow">
+  抓取位姿 (base_link坐标系)
+      │
+      ▼
+┌─────────────────┐
+│ 全局路径规划      │  输入: 起点(当前关节角) + 终点(抓取位姿)
+│ MoveIt2 +        │  输出: 一系列关节轨迹点 (JointTrajectory)
+│ OMPL (RRTConnect)│  方法: 采样法随机搜索路径
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 局部避障          │  输入: 轨迹点 + 实时点云 (障碍物)
+│ MoveIt2          │  输出: 调整后的轨迹 (避开新出现的障碍物)
+│ Planning Scene   │  方法: 将深度点云实时更新到规划场景中
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 笛卡尔运动生成    │  输入: 末端位姿序列 (对于直线运动)
+│ (拆袋/放置时用)   │  输出: 关节轨迹 (保持末端沿直线运行)
+│ pilz_industrial  │  方法: 逆运动学插值
+└────────┬────────┘
+         │
+         ▼
+    [输出到控制模块]
+  </div>
+
+  <p><strong>MoveIt2 Planning Scene 配置要点：</strong></p>
+  <ul>
+    <li><strong>碰撞对象（Collision Object）：</strong>将物料框、工作台、相机支架等静态物体注册为碰撞对象。使用点云或简单几何体（Box/Cylinder）表示。</li>
+    <li><strong>允许碰撞矩阵（ACM）：</strong>机械臂末端执行器与被抓取的塑料袋之间允许碰撞（因为就是要接触的），但与其他物体不允许碰撞。</li>
+    <li><strong>规划超时：</strong>设置planning_time=10秒。在2秒内规划不出路径时，切换IK求解器重试。</li>
+  </ul>
+
+  <pre><code><span class="hl-cm"># 规划请求伪代码 (Python)</span>
+<span class="hl-kw">from</span> <span class="hl-var">moveit_commander</span> <span class="hl-kw">import</span> <span class="hl-var">MoveGroupCommander</span>
+
+<span class="hl-var">move_group</span> = <span class="hl-var">MoveGroupCommander</span>(<span class="hl-str">"ur5e_arm"</span>)
+<span class="hl-var">move_group</span>.<span class="hl-fn">set_pose_target</span>(<span class="hl-var">grasp_pose</span>)          <span class="hl-cm"># 设置目标位姿</span>
+<span class="hl-var">move_group</span>.<span class="hl-fn">set_planning_time</span>(<span class="hl-num">10</span>)                <span class="hl-cm"># 规划超时10秒</span>
+<span class="hl-var">move_group</span>.<span class="hl-fn">set_num_planning_attempts</span>(<span class="hl-num">3</span>)         <span class="hl-cm"># 重试3次</span>
+
+<span class="hl-var">plan</span> = <span class="hl-var">move_group</span>.<span class="hl-fn">plan</span>()                         <span class="hl-cm"># 规划！</span>
+<span class="hl-kw">if</span> <span class="hl-var">plan</span>[<span class="hl-num">0</span>]:                                        <span class="hl-cm"># plan[0] = success flag</span>
+    <span class="hl-var">move_group</span>.<span class="hl-fn">execute</span>(<span class="hl-var">plan</span>[<span class="hl-num">1</span>])                 <span class="hl-cm"># plan[1] = trajectory</span></code></pre>
+
+  <h3 id="sec4-3">4.3 控制模块（Control）</h3>
+
+  <p><strong>控制模块的职责：</strong>执行规划好的轨迹，并在某些步骤（如拆袋）中用<strong>力控/阻抗控制</strong>替代纯位置控制，实现柔顺动作。</p>
+
+  <table>
+    <tr><th>控制模式</th><th>适用步骤</th><th>原理</th><th>ROS2实现</th></tr>
+    <tr>
+      <td><strong>位置控制</strong></td>
+      <td>T3运动规划、T5移出、T8放置物料、T9丢弃</td>
+      <td>指定末端目标位姿，控制器驱动关节达到目标，不关心力/力矩</td>
+      <td>JointTrajectoryController (ros2_control)</td>
+    </tr>
+    <tr>
+      <td><strong>阻抗控制</strong></td>
+      <td>T6拆袋（撕裂动作）</td>
+      <td>将机械臂末端模拟为"弹簧+阻尼器"——碰到阻力时会顺应而非强行推进。撕裂塑料袋时保持恒定的力，不会用力过猛</td>
+      <td>需要支持FT传感器的控制器（如UR内置阻抗模式、cartesian_impedance_controller）</td>
+    </tr>
+    <tr>
+      <td><strong>力位混合控制</strong></td>
+      <td>T4抓取塑料袋（接近+接触）</td>
+      <td>在某个方向（如Z轴即接近方向）做力控，其他方向做位置控制。接近塑料袋时力控防止压坏物料</td>
+      <td>需要自定义ros2_control插件或使用UR的力控API</td>
+    </tr>
+    <tr>
+      <td><strong>开环力控</strong></td>
+      <td>T7取料（夹爪夹持）</td>
+      <td>设置固定夹持力（如10N），夹爪PID维持目标力</td>
+      <td>夹爪驱动自带力控（Robotiq夹爪支持）</td>
+    </tr>
+  </table>
+
+  <div class="card green">
+    <h4>💡 力控的简化替代方案</h4>
+    <p>如果机械臂或夹爪不支持力控（很多廉价设备确实不支持），可以使用以下替代策略：</p>
+    <ul>
+      <li><strong>用位置控制+末端弹簧：</strong>在吸盘和机械臂之间安装一个<strong>弹簧缓冲器</strong>（被动柔顺），机械臂用位置控制运动比目标位置多2-3mm，弹簧自然提供柔顺性。</li>
+      <li><strong>用视觉反馈替代力感：</strong>当吸盘接触塑料袋时，通过深度相机观察吸盘是否已经压到塑料袋表面，来判定接触，而非依赖力传感器。</li>
+      <li><strong>用电流反馈粗略估计力：</strong>协作机械臂的关节电流与输出力矩成正比，可以粗略估计末端受力。UR机械臂通过<code>/joint_states</code>话题的effort字段可读取关节力矩。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec4-4">4.4 决策模块（Decision / 状态机）</h3>
+
+  <p><strong>决策模块的职责：</strong>管理整个任务的执行流程——当前应该执行哪个子任务？子任务完成后下一步去哪里？子任务失败了怎么办？</p>
+
+  <p><strong>状态机设计图：</strong></p>
+
+  <div class="flow">
+                    ┌─────────────────────┐
+                    │      IDLE（空闲）     │
+                    │   等待启动信号        │
+                    └──────────┬──────────┘
+                               │ start_cmd
+                               ▼
+                    ┌─────────────────────┐
+             ┌─────▶│   DETECT（检测）      │◀──────┐
+             │      │  T1: YOLO+SAM2       │       │
+             │      └──────────┬──────────┘       │
+             │       found / not_found              │
+             │        ┌────────┴────────┐          │
+             │        ▼                 ▼          │
+             │  ┌───────────┐    ┌───────────┐     │
+             │  │SELECT_GRASP│    │ RETRY /   │────▶│ (重试3次后→ERROR)
+             │  │  T2: 选点  │    │ 调整打光  │     │
+             │  └─────┬─────┘    └───────────┘     │
+             │    grasp_ready                       │
+             │        ▼                             │
+             │  ┌───────────┐                       │
+             │  │   PLAN     │  T3: MoveIt2规划     │
+             │  └─────┬─────┘                       │
+             │    plan_ok / plan_fail               │
+             │     ┌───────┴────────┐               │
+             │     ▼                ▼               │
+             │ ┌────────┐    ┌──────────┐          │
+             │ │ GRASP  │    │ RETRY /  │──────────▶
+             │ │ T4:抓取│    │换IK求解器│          │
+             │ └───┬────┘    └──────────┘          │
+             │ grasp_ok / grasp_fail               │
+             │     ▼                                │
+             │ ┌────────┐                          │
+             │ │  LIFT  │  T5: 移出物料框           │
+             │ └───┬────┘                          │
+             │     ▼                                │
+             │ ┌────────┐                          │
+             │ │ DEBAG  │  T6: 拆袋                 │
+             │ └───┬────┘                          │
+             │     ▼                                │
+             │ ┌────────┐                          │
+             │ │EXTRACT │  T7: 取料                 │
+             │ └───┬────┘                          │
+             │     ▼                                │
+             │ ┌────────┐                          │
+             │ │ PLACE  │  T8: 放物料               │
+             │ └───┬────┘                          │
+             │     ▼                                │
+             │ ┌────────┐                          │
+             │ │DISPOSE │  T9: 扔袋                 │
+             │ └───┬────┘                          │
+             │     ▼                                │
+             │ ┌────────┐                          │
+             │ │  DONE  │  完成当前物料              │
+             │ └───┬────┘                          │
+             │     │ 还有物料→返回DETECT            │
+             │     │ 没有物料→IDLE                  │
+             └─────┘                                │
+                    ┌────────┐                      │
+                    │ ERROR  │ 需要人工介入          │
+                    └────────┘                      │
+  </div>
+
+  <div class="new-team-tip">
+    <div class="tip-title">⚙️ 状态机框架选择</div>
+    <ul>
+      <li><strong>简单场景：</strong>使用 <strong>Python枚举 + 自定义循环</strong>（如模块3伪代码所示）。不需要额外依赖，逻辑透明，调试方便。</li>
+      <li><strong>中等复杂：</strong>使用 <strong>SMACH</strong>（ROS2官方状态机库）或 <strong>py_trees</strong>（行为树，更灵活）。</li>
+      <li><strong>复杂场景：</strong>使用 <strong>BehaviorTree.CPP</strong>（C++行为树，性能好但学习曲线陡）。</li>
+      <li><strong>关键原则：</strong>无论选什么框架，<strong>每个状态必须有超时机制</strong>。没有超时的状态机 = 定时炸弹。</li>
+    </ul>
+  </div>
+
+</section>
+
+<!-- ═══════════════════════════════════════════
+     模块 5：每个步骤的具体算法（分两条路线）
+     ═══════════════════════════════════════════ -->
+<section id="sec5">
+  <h2><span class="section-num">5</span> 每个步骤的具体算法（分两条路线）</h2>
+
+  <p>本章是全文最"硬核"的部分——为每个子任务提供两套算法方案：<strong>路线A（经典/传统方法）</strong>适合快速上手、验证概念；<strong>路线B（先进/深度学习方法）</strong>适合后续优化、追求更高成功率。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧩 注意事项</div>
+    <ul>
+      <li><strong>先用路线A跑通全流程，再用路线B逐个优化：</strong>不要一开始就上最fancy的深度学习模型。先用经典方法搭建一个能跑通的系统（即使成功率只有50-60%），然后针对性地替换瓶颈环节。</li>
+      <li><strong>标注数据是隐藏的最大成本：</strong>深度学习模型的效果严重依赖标注数据的数量和质量。预计团队需要标注500-2000张图像，每张10-30分钟。</li>
+      <li><strong>时间预估包含学习时间：</strong>以下"实现时间"假设团队成员已有基本的编程能力，但可能不熟悉特定算法。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec5-1">5.1 T1 物料检测</h3>
+
+  <table>
+    <tr><th style="width:12%">维度</th><th style="width:44%">路线A：经典方法</th><th style="width:44%">路线B：先进方法</th></tr>
+    <tr>
+      <td><strong>方法名称</strong></td>
+      <td>颜色分割 + 轮廓查找</td>
+      <td>YOLOv8-seg 实例分割 + SAM2 精细化</td>
+    </tr>
+    <tr>
+      <td><strong>原理</strong></td>
+      <td>假设塑料袋是透明/半透明的白色，在HSV空间中固定色调范围（H:0-180, S:0-30, V:180-255），进行颜色阈值分割，然后查找连通域轮廓。</td>
+      <td>YOLOv8的第一阶段检测塑料袋的边界框和粗略掩码；SAM2使用该边界框作为Prompt进行精细的像素级分割。两阶段级联实现高精度分割。</td>
+    </tr>
+    <tr>
+      <td><strong>优点</strong></td>
+      <td>无标注数据需求、实时性好（5-10ms）、代码简单（50行OpenCV）</td>
+      <td>精度高（mAP>0.9）、对不同光照/塑料袋颜色鲁棒、可同时检测多个目标</td>
+    </tr>
+    <tr>
+      <td><strong>缺点</strong></td>
+      <td>对光照变化敏感（换一个光源颜色就失效）、不同颜色塑料袋需单独调参、无法检测严重变形的塑料袋</td>
+      <td>需要500+张标注图像训练YOLOv8、需要GPU推理、端到端延迟高（100-300ms）</td>
+    </tr>
+    <tr>
+      <td><strong>标注数据需求</strong></td>
+      <td>0（只需手动调HSV参数，约半天）</td>
+      <td>YOLOv8: 500-1000张标注图像（YOLO格式）；SAM2: 无需额外训练（使用预训练权重）</td>
+    </tr>
+    <tr>
+      <td><strong>开源实现</strong></td>
+      <td>OpenCV内置函数：<code>cv2.cvtColor()</code> + <code>cv2.inRange()</code> + <code>cv2.findContours()</code></td>
+      <td>YOLOv8: github.com/ultralytics/ultralytics；SAM2: github.com/facebookresearch/sam2</td>
+    </tr>
+    <tr>
+      <td><strong>实现时间</strong></td>
+      <td>1-2天</td>
+      <td>1-2周（含数据采集标注+训练+部署）</td>
+    </tr>
+  </table>
+
+  <pre><code><span class="hl-cm"># 路线A 示例代码：HSV颜色分割检测白色塑料袋</span>
+<span class="hl-kw">import</span> <span class="hl-var">cv2</span>
+<span class="hl-kw">import</span> <span class="hl-var">numpy</span> <span class="hl-kw">as</span> <span class="hl-var">np</span>
+
+<span class="hl-kw">def</span> <span class="hl-fn">detect_plastic_bag_classic</span>(<span class="hl-var">rgb_image</span>):
+    <span class="hl-cm">"""经典方法：HSV颜色分割检测白色/透明塑料袋"""</span>
+    <span class="hl-var">hsv</span> = <span class="hl-var">cv2</span>.<span class="hl-fn">cvtColor</span>(<span class="hl-var">rgb_image</span>, <span class="hl-var">cv2</span>.<span class="hl-var">COLOR_RGB2HSV</span>)
+    <span class="hl-cm"># 白色/透明的HSV范围（可以先用Trackbar交互调整）</span>
+    <span class="hl-var">lower_white</span> = <span class="hl-var">np</span>.<span class="hl-fn">array</span>([<span class="hl-num">0</span>, <span class="hl-num">0</span>, <span class="hl-num">150</span>])
+    <span class="hl-var">upper_white</span> = <span class="hl-var">np</span>.<span class="hl-fn">array</span>([<span class="hl-num">180</span>, <span class="hl-num">40</span>, <span class="hl-num">255</span>])
+    <span class="hl-var">mask</span> = <span class="hl-var">cv2</span>.<span class="hl-fn">inRange</span>(<span class="hl-var">hsv</span>, <span class="hl-var">lower_white</span>, <span class="hl-var">upper_white</span>)
+
+    <span class="hl-cm"># 形态学操作：去除噪声+填充孔洞</span>
+    <span class="hl-var">kernel</span> = <span class="hl-var">cv2</span>.<span class="hl-fn">getStructuringElement</span>(<span class="hl-var">cv2</span>.<span class="hl-var">MORPH_ELLIPSE</span>, (<span class="hl-num">7</span>,<span class="hl-num">7</span>))
+    <span class="hl-var">mask</span> = <span class="hl-var">cv2</span>.<span class="hl-fn">morphologyEx</span>(<span class="hl-var">mask</span>, <span class="hl-var">cv2</span>.<span class="hl-var">MORPH_CLOSE</span>, <span class="hl-var">kernel</span>)
+    <span class="hl-var">mask</span> = <span class="hl-var">cv2</span>.<span class="hl-fn">morphologyEx</span>(<span class="hl-var">mask</span>, <span class="hl-var">cv2</span>.<span class="hl-var">MORPH_OPEN</span>, <span class="hl-var">kernel</span>)
+
+    <span class="hl-cm"># 查找最大轮廓（假设最大的白色区域就是塑料袋）</span>
+    <span class="hl-var">contours</span>, _ = <span class="hl-var">cv2</span>.<span class="hl-fn">findContours</span>(<span class="hl-var">mask</span>, <span class="hl-var">cv2</span>.<span class="hl-var">RETR_EXTERNAL</span>, <span class="hl-var">cv2</span>.<span class="hl-var">CHAIN_APPROX_SIMPLE</span>)
+    <span class="hl-kw">if</span> <span class="hl-var">contours</span>:
+        <span class="hl-var">largest</span> = <span class="hl-fn">max</span>(<span class="hl-var">contours</span>, <span class="hl-var">key</span>=<span class="hl-var">cv2</span>.<span class="hl-var">contourArea</span>)
+        <span class="hl-var">x</span>,<span class="hl-var">y</span>,<span class="hl-var">w</span>,<span class="hl-var">h</span> = <span class="hl-var">cv2</span>.<span class="hl-fn">boundingRect</span>(<span class="hl-var">largest</span>)
+        <span class="hl-kw">return</span> {<span class="hl-str">'bbox'</span>: [<span class="hl-var">x</span>,<span class="hl-var">y</span>,<span class="hl-var">w</span>,<span class="hl-var">h</span>], <span class="hl-str">'mask'</span>: <span class="hl-var">mask</span>, <span class="hl-str">'contour'</span>: <span class="hl-var">largest</span>}
+    <span class="hl-kw">return</span> <span class="hl-var">None</span></code></pre>
+
+  <h3 id="sec5-2">5.2 T2 抓取点选取</h3>
+
+  <table>
+    <tr><th style="width:12%">维度</th><th style="width:44%">路线A：经典方法</th><th style="width:44%">路线B：先进方法</th></tr>
+    <tr>
+      <td><strong>方法名称</strong></td>
+      <td>点云质心 + 垂直方向</td>
+      <td>AnyGrasp / GIGA 生成式抓取</td>
+    </tr>
+    <tr>
+      <td><strong>原理</strong></td>
+      <td>在塑料袋的3D点云上计算质心（centroid），抓取方向设为垂直向下（z轴负方向）。对于塑料袋这种轻薄物体，垂直向下抓取是最稳定的。</td>
+      <td>AnyGrasp使用PointNet++架构，输入场景点云，直接输出多个候选抓取位姿（6-DoF Grasp）及质量评分。选择评分最高的抓取位姿。</td>
+    </tr>
+    <tr>
+      <td><strong>优点</strong></td>
+      <td>代码简单（20行）、不依赖深度学习、计算快（<1ms）</td>
+      <td>适应不规则形状、可处理各种朝向的物体、抓取成功率比质心法高15-25%</td>
+    </tr>
+    <tr>
+      <td><strong>缺点</strong></td>
+      <td>不适合竖直面或倾斜面的抓取、无法优化抓取角度</td>
+      <td>需要GPU、推理时间50-150ms、部署复杂（依赖GraspNet API）</td>
+    </tr>
+    <tr>
+      <td><strong>标注数据需求</strong></td>
+      <td>0</td>
+      <td>AnyGrasp提供预训练模型（基于GraspNet-1Billion数据集），无需自行训练</td>
+    </tr>
+    <tr>
+      <td><strong>开源实现</strong></td>
+      <td>Open3D: <code>pcd.get_center()</code></td>
+      <td>github.com/graspnet/anygrasp_sdk</td>
+    </tr>
+    <tr>
+      <td><strong>实现时间</strong></td>
+      <td>半天</td>
+      <td>1-2周（含模型部署、ROS2集成、调试）</td>
+    </tr>
+  </table>
+
+  <pre><code><span class="hl-cm"># 路线A 示例：点云质心法计算抓取点</span>
+<span class="hl-kw">import</span> <span class="hl-var">open3d</span> <span class="hl-kw">as</span> <span class="hl-var">o3d</span>
+<span class="hl-kw">import</span> <span class="hl-var">numpy</span> <span class="hl-kw">as</span> <span class="hl-var">np</span>
+
+<span class="hl-kw">def</span> <span class="hl-fn">compute_grasp_centroid</span>(<span class="hl-var">point_cloud</span>):
+    <span class="hl-cm">"""计算点云质心作为抓取点，方向垂直向下"""</span>
+    <span class="hl-var">points</span> = <span class="hl-var">np</span>.<span class="hl-fn">asarray</span>(<span class="hl-var">point_cloud</span>.<span class="hl-var">points</span>)
+    <span class="hl-var">centroid</span> = <span class="hl-var">np</span>.<span class="hl-fn">mean</span>(<span class="hl-var">points</span>, <span class="hl-var">axis</span>=<span class="hl-num">0</span>)  <span class="hl-cm"># (x,y,z) 质心</span>
+
+    <span class="hl-cm"># 姿态：吸盘Z轴指向物体表面法向（近似为垂直向下）</span>
+    <span class="hl-cm"># 使用四元数表示：绕X轴旋转180°使Z轴朝下</span>
+    <span class="hl-var">grasp_pose</span> = {
+        <span class="hl-str">'position'</span>: {<span class="hl-str">'x'</span>: <span class="hl-var">centroid</span>[<span class="hl-num">0</span>], <span class="hl-str">'y'</span>: <span class="hl-var">centroid</span>[<span class="hl-num">1</span>], <span class="hl-str">'z'</span>: <span class="hl-var">centroid</span>[<span class="hl-num">2</span>]},
+        <span class="hl-str">'orientation'</span>: {<span class="hl-str">'x'</span>: <span class="hl-num">1.0</span>, <span class="hl-str">'y'</span>: <span class="hl-num">0.0</span>, <span class="hl-str">'z'</span>: <span class="hl-num">0.0</span>, <span class="hl-str">'w'</span>: <span class="hl-num">0.0</span>},
+        <span class="hl-str">'quality'</span>: <span class="hl-num">0.7</span>  <span class="hl-cm"># 默认质量分</span>
+    }
+    <span class="hl-kw">return</span> <span class="hl-var">grasp_pose</span></code></pre>
+
+  <h3 id="sec5-3">5.3 T3-T5 运动规划与抓取</h3>
+
+  <table>
+    <tr><th style="width:12%">子任务</th><th style="width:44%">路线A：经典方法</th><th style="width:44%">路线B：先进方法</th></tr>
+    <tr>
+      <td><strong>T3 运动规划</strong></td>
+      <td>MoveIt2 + OMPL RRTConnect + TracIK求解器。设置固定的pre-grasp approach（从上方50mm接近）。</td>
+      <td>MoveIt2 Hybrid Planning（全局规划+局部MPC优化）+ CHOMP/STOMP轨迹优化。路径更平滑、执行时间更短。</td>
+    </tr>
+    <tr>
+      <td><strong>T4 抓取</strong></td>
+      <td>开环抓取：真空发生器启动→压力传感器检测到-60kPa→确认成功。超时3秒未达标则重试。</td>
+      <td>闭环抓取：力传感器反馈+视觉伺服（Visual Servoing）。实时调整吸盘位置确保最佳吸附姿态。</td>
+    </tr>
+    <tr>
+      <td><strong>T5 移出</strong></td>
+      <td>笛卡尔直线轨迹：从抓取位置垂直抬升150mm，确保完全离开物料框。</td>
+      <td>基于视觉的避障：实时更新Planning Scene中的点云，检测物料框内其他物料的位移，避免碰撞。</td>
+    </tr>
+  </table>
+
+  <h3 id="sec5-4">5.4 T6 拆袋动作</h3>
+
+  <table>
+    <tr><th style="width:12%">维度</th><th style="width:44%">路线A：经典方法</th><th style="width:44%">路线B：先进方法</th></tr>
+    <tr>
+      <td><strong>方法名称</strong></td>
+      <td>PID力控撕裂 + 抖动分离</td>
+      <td>阻抗控制 + 触觉反馈 + 热切割辅助</td>
+    </tr>
+    <tr>
+      <td><strong>原理</strong></td>
+      <td>用吸盘吸附塑料袋一端→用夹爪夹住塑料袋另一端→控制机械臂以恒定力（如15N）向两侧拉拽→塑料袋被撕裂。撕裂后抖动塑料袋，物料靠重力掉出。</td>
+      <td>阻抗控制器模拟"弹簧-阻尼"特性，撕裂塑料袋时根据接触力实时调整末端位置。同时在机械臂末端加装加热刀片（150-200°C），在塑料袋上热切一个开口。</td>
+    </tr>
+    <tr>
+      <td><strong>优点</strong></td>
+      <td>不依赖高级硬件、方法直观、容易理解和调试</td>
+      <td>适用各种塑料袋材质（韧性强的也能切）、物料损伤率低、动作柔顺</td>
+    </tr>
+    <tr>
+      <td><strong>缺点</strong></td>
+      <td>韧性极强的塑料袋（如复合材质）可能撕裂失败；力控参数需要反复调试</td>
+      <td>需要FT传感器或关节力矩反馈+阻抗控制器、热切割需安全防护</td>
+    </tr>
+    <tr>
+      <td><strong>开源实现</strong></td>
+      <td>ROS2 Control +自定义PID节点；参考UR官方力控示例</td>
+      <td>cartesian_impedance_controller (ros2_controllers)；参考ShakingBot论文思路</td>
+    </tr>
+    <tr>
+      <td><strong>实现时间</strong></td>
+      <td>1-2周</td>
+      <td>3-4周</td>
+    </tr>
+  </table>
+
+  <h3 id="sec5-5">5.5 T7-T9 取料、放置、丢弃</h3>
+
+  <table>
+    <tr><th style="width:12%">子任务</th><th style="width:44%">路线A：经典方法</th><th style="width:44%">路线B：先进方法</th></tr>
+    <tr>
+      <td><strong>T7 取料</strong></td>
+      <td>机械臂抖动（3-5次快速上下运动，幅度5cm），物料靠重力从塑料袋的开口掉出到接料区。如有剩余物料用夹爪取出。</td>
+      <td>视觉引导的双臂协作：一臂固定塑料袋，另一臂使用吸盘/夹爪直接从袋口取出物料。</td>
+    </tr>
+    <tr>
+      <td><strong>T8 放置</strong></td>
+      <td>固定放置点（预设位置坐标）——机械臂运动到放置区 → 打开夹爪 → 抬升。</td>
+      <td>视觉验证放置：相机拍摄放置区 → 确认物料已正确放置 → 若位置偏差则用夹爪调整。</td>
+    </tr>
+    <tr>
+      <td><strong>T9 丢弃</strong></td>
+      <td>机械臂移动到垃圾区 → 关闭真空 → 开启吹气 → 塑料袋掉入垃圾桶。</td>
+      <td>压缩塑料袋（夹爪压缩）→ 节省垃圾区空间 → 适用于连续工作场景。</td>
+    </tr>
+  </table>
+
+  <h3 id="sec5-6">5.6 算法汇总对比表</h3>
+
+  <table>
+    <tr><th>子任务</th><th>路线A（上手）</th><th>实现时间A</th><th>路线B（后续优化）</th><th>实现时间B</th><th>推荐策略</th></tr>
+    <tr>
+      <td>T1 检测</td><td>HSV颜色分割</td><td>1-2天</td><td>YOLOv8-seg + SAM2</td><td>1-2周</td><td>先A后B</td></tr>
+    <tr>
+      <td>T2 选点</td><td>点云质心+垂直方向</td><td>半天</td><td>AnyGrasp</td><td>1-2周</td><td>先A后B</td></tr>
+    <tr>
+      <td>T3 规划</td><td>MoveIt2 + TracIK + RRTConnect</td><td>1周</td><td>Hybrid Planning + STOMP</td><td>2-3周</td><td>A足够</td></tr>
+    <tr>
+      <td>T4 抓取</td><td>开环+压力传感器确认</td><td>3-5天</td><td>力控+视觉伺服</td><td>2-3周</td><td>先A后B</td></tr>
+    <tr>
+      <td>T5 移出</td><td>笛卡尔直线抬升</td><td>1天</td><td>视觉实时避障</td><td>1-2周</td><td>A足够</td></tr>
+    <tr>
+      <td>T6 拆袋</td><td>PID力控撕裂+抖动</td><td>1-2周</td><td>阻抗控制+热切割</td><td>3-4周</td><td>先A后视情况B</td></tr>
+    <tr>
+      <td>T7 取料</td><td>抖动掉出+夹爪补充</td><td>1周</td><td>双臂协作+视觉引导</td><td>4-6周</td><td>A足够</td></tr>
+    <tr>
+      <td>T8 放置</td><td>固定位置放置</td><td>1天</td><td>视觉验证+调整</td><td>1周</td><td>A足够</td></tr>
+    <tr>
+      <td>T9 丢弃</td><td>吹气释放+垃圾桶</td><td>半天</td><td>压缩后丢弃</td><td>2-3天</td><td>A足够</td></tr>
+  </table>
+
+  <div class="new-team-tip">
+    <div class="tip-title">📊 关键决策建议</div>
+    <ul>
+      <li><strong>T1检测是唯一强烈建议从路线A切换到路线B的环节：</strong>HSV颜色分割在新环境中几乎必然失效（换个塑料袋颜色就不行了），而YOLOv8是性价比最高的深度学习方法（训练快、部署简单、效果提升明显）。建议在阶段2就切换到路线B。</li>
+      <li><strong>T6拆袋是技术难度最高的环节：</strong>如果路线A（PID力控撕裂）在你们的具体物料上成功率不到60%，不要花太多时间调参——直接考虑物理方案（如加装刀片附件或热切割丝）。物理方案有时比算法优化更可靠。</li>
+      <li><strong>大部分T3-T9用路线A就足够了：</strong>规划、移出、放置、丢弃这些步骤不需要最前沿的算法。MoveIt2的默认配置已经能满足90%的需求。</li>
+    </ul>
+  </div>
+
+</section>
+
+<!-- ═══════════════════════════════════════════
+     模块 6：完整开发阶段与里程碑
+     ═══════════════════════════════════════════ -->
+<section id="sec6">
+  <h2><span class="section-num">6</span> 完整开发阶段与里程碑（建议6阶段）</h2>
+
+  <p>欢迎来到最激动人心的部分——我们将把整个项目拆解成6个可执行的阶段。每个阶段都有明确的目标、具体任务、验收标准和风险提示。对于团队来说，阶段式推进最大的好处是：<strong>每一步都有可验证的产出，不会等到最后才发现方向错了</strong>。</p>
+
+  <p>整个开发周期预计<strong>16周（约4个月）</strong>，假设团队全职投入。如果团队成员是兼职或学习时间有限，请至少在每个阶段后面预留20-30%的缓冲时间。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧩 注意事项</div>
+    <ul>
+      <li><strong>不要跳过阶段0！</strong>很多团队因为急于看到机械臂动起来而忽略环境搭建，结果在后续阶段被各种"玄学"问题折磨。环境搭好了，后面90%的问题都可以通过网络搜索解决。</li>
+      <li><strong>快速迭代优于一次完美：</strong>每个阶段的目标是"能跑通"而不是"完美"。用最短的时间完成一个可演示的版本，然后在下个阶段改进。</li>
+      <li><strong>每天保留30分钟写调试日志：</strong>记录今天遇到了什么问题、怎么解决的、什么参数改了什么效果。这在后续调试中是救命稻草。</li>
+    </ul>
+  </div>
+
+  <div class="timeline">
+
+    <div class="timeline-item">
+      <h4 id="sec6-0">阶段0：环境搭建（第1-2周）</h4>
+      <div class="period">预计耗时：2周 | 预算需求：¥0（仅软件）</div>
+
+      <p><strong>目标：</strong>搭建完整的机器人开发环境，在仿真中让虚拟机械臂动起来。</p>
+
+      <p><strong>具体任务：</strong></p>
+      <ul>
+        <li>安装Ubuntu 22.04 LTS</li>
+        <li>安装ROS2 Humble</li>
+        <li>安装MoveIt2和Gazebo Ignition</li>
+        <li>下载UR5e或AUBO i5的ROS2驱动包和URDF模型</li>
+        <li>运行ROS2 + MoveIt2 + Gazebo联合仿真demo</li>
+        <li>在RViz中通过交互式标记拖动机械臂末端，编写Python脚本控制运动</li>
+      </ul>
+
+      <p><strong>验收标准：</strong></p>
+      <ul>
+        <li>仿真环境中能启动机械臂模型并显示在RViz中</li>
+        <li>能通过Python脚本控制机械臂运动到指定位置</li>
+        <li>Gazebo物理仿真中机械臂能响应重力并正常运动</li>
+      </ul>
+
+      <p><strong>风险提示：</strong></p>
+      <ul>
+        <li><strong>版本兼容性是最大的坑。</strong>ROS2 Humble只支持Ubuntu 22.04。强烈建议选这个组合。</li>
+        <li>NVIDIA显卡驱动安装可能导致黑屏——先装系统再装驱动。</li>
+        <li>国内网络下apt换源可节省大量时间（清华源/阿里源）。</li>
+      </ul>
+    </div>
+
+    <div class="timeline-item">
+      <h4 id="sec6-1">阶段1：单点动作验证（第3-4周）</h4>
+      <div class="period">预计耗时：2周</div>
+
+      <p><strong>目标：</strong>编写控制脚本，让机械臂从固定位置抓取固定物体。这是整个系统的"Hello World"。</p>
+
+      <p><strong>具体任务：</strong></p>
+      <ul>
+        <li>编写ROS2节点，发布机械臂目标位姿</li>
+        <li>学习MoveIt2的Python API（moveit_commander）</li>
+        <li>实现机械臂从初始位置→预抓取位置→抓取→抬升→放置</li>
+        <li>固定物体的重复抓取测试（至少10次）</li>
+      </ul>
+
+      <p><strong>验收标准：</strong></p>
+      <ul>
+        <li>重复10次抓取成功率≥90%</li>
+        <li>单次循环时间≤15秒</li>
+        <li>运动过程中无碰撞或奇异点</li>
+      </ul>
+    </div>
+
+    <div class="timeline-item">
+      <h4 id="sec6-2">阶段2：视觉感知（第5-7周）</h4>
+      <div class="period">预计耗时：3周 | 需要GPU：RTX 3060及以上</div>
+
+      <p><strong>目标：</strong>让系统"看见"——检测物料框、塑料袋和袋内物料的位姿。</p>
+
+      <p><strong>具体任务：</strong></p>
+      <ul>
+        <li>搭建相机硬件（Intel RealSense D435i），安装驱动和ROS2 wrapper</li>
+        <li>采集数据集：不同光照/角度下拍摄物料框+塑料袋+物料</li>
+        <li>使用LabelImg或LabelStudio标注（YOLO格式）：标注"plastic_bag"、"material_box"、"object"三类</li>
+        <li>训练YOLOv8目标检测模型（推荐YOLOv8m）</li>
+        <li>实现深度图对齐：RGB检测结果映射到深度图获取三维坐标</li>
+      </ul>
+
+      <p><strong>验收标准：</strong></p>
+      <ul>
+        <li>塑料袋检测mAP@0.5 ≥ 0.8</li>
+        <li>检测帧率≥10 FPS</li>
+        <li>深度图对齐后三维坐标误差≤5mm（1m距离内）</li>
+      </ul>
+
+      <p><strong>风险提示：</strong></p>
+      <ul>
+        <li>YOLOv8至少需要200张/类标注图像。建议每类500张以上。</li>
+        <li>透明/反光塑料袋会导致深度图缺失——加补光灯改善。</li>
+        <li>训练GPU至少6GB显存。如果只有CPU，建议租用云端GPU（如AutoDL，约¥3-5/小时）。</li>
+      </ul>
+    </div>
+
+    <div class="timeline-item">
+      <h4 id="sec6-3">阶段3：抓取闭环（第8-11周）</h4>
+      <div class="period">预计耗时：4周</div>
+
+      <p><strong>目标：</strong>打通视觉→规划→抓取→移出全链路。</p>
+
+      <p><strong>具体任务：</strong></p>
+      <ul>
+        <li>手眼标定（Eye-to-Hand），获取相机→机械臂基坐标系的TF变换</li>
+        <li>视觉处理节点：订阅相机→YOLO检测→计算抓取点→坐标转换到base_link</li>
+        <li>MoveIt2运动规划：根据抓取点规划approach→grasp→retreat→place路径</li>
+        <li>编写状态机管理全流程</li>
+        <li>异常处理：检测失败重试、规划失败调整位姿</li>
+      </ul>
+
+      <p><strong>验收标准：</strong></p>
+      <ul>
+        <li>完整抓取流程成功率≥70%</li>
+        <li>单次循环≤25秒</li>
+        <li>视觉→执行端到端延迟≤3秒</li>
+      </ul>
+
+      <p><strong>风险提示：</strong></p>
+      <ul>
+        <li><strong>手眼标定精度是关键瓶颈。</strong>建议使用10-15组不同位姿的标定数据，验证重投影误差<0.5像素。</li>
+        <li>坐标系转换错误是最常见bug——在RViz中可视化所有坐标系确认正确。</li>
+        <li>抓取点抖动→添加帧间滤波（指数移动平均）平滑。</li>
+      </ul>
+    </div>
+
+    <div class="timeline-item">
+      <h4 id="sec6-4">阶段4：拆袋与分离（第12-14周）</h4>
+      <div class="period">预计耗时：3周</div>
+
+      <p><strong>目标：</strong>实现拆袋——打开/撕裂塑料袋，取出内部物料。</p>
+
+      <p><strong>具体任务：</strong></p>
+      <ul>
+        <li>评估拆袋方案：吸盘撕裂 vs 刀片切割 vs 热熔切割</li>
+        <li>吸盘抓袋：调整吸盘位置和负压参数</li>
+        <li>撕裂/切割执行：控制机械臂完成撕裂动作</li>
+        <li>物料取出：抖动或夹取</li>
+        <li>袋物分离验证</li>
+      </ul>
+
+      <p><strong>验收标准：</strong></p>
+      <ul>
+        <li>物料完整取出成功率≥80%</li>
+        <li>物料损伤率≤5%</li>
+        <li>拆袋动作时间≤10秒</li>
+      </ul>
+
+      <p><strong>风险提示：</strong></p>
+      <ul>
+        <li><strong>物料损伤：</strong>刀片切割可能损伤袋内物料——控制切割深度或使用热切割。</li>
+        <li><strong>塑料袋韧性差异：</strong>不同批次的塑料袋韧性差异大。准备多种类型进行测试。</li>
+        <li><strong>先手动测试再自动化：</strong>拆袋是技术难度最高的环节。先手动控制机械臂完成每个步骤，确认可行后再编程自动化。</li>
+      </ul>
+    </div>
+
+    <div class="timeline-item">
+      <h4 id="sec6-5">阶段5：联合调试与优化（第15-16周）</h4>
+      <div class="period">预计耗时：2周</div>
+
+      <p><strong>目标：</strong>全流程端到端测试，优化成功率和节拍。</p>
+
+      <p><strong>具体任务：</strong></p>
+      <ul>
+        <li>全流程串联：检测→拆袋→取料→放置</li>
+        <li>异常处理完善：重试逻辑和回退策略</li>
+        <li>节拍优化：分析瓶颈环节（通常视觉和运动规划占80%时间）</li>
+        <li>长时间稳定性测试：连续运行1小时</li>
+      </ul>
+
+      <p><strong>验收标准：</strong></p>
+      <ul>
+        <li>端到端成功率≥90%（连续50次）</li>
+        <li>节拍≤30秒/件</li>
+        <li>连续运行1小时无系统崩溃</li>
+      </ul>
+
+      <div class="new-team-tip">
+        <div class="tip-title">⚡ 优化阶段提醒</div>
+        <p>最容易陷入的误区是"什么都想优化"。先做一次耗时分析（Profiling），找出瓶颈环节。通常80%的时间花在20%的环节上。每个优化改动后都要重新测试成功率——不要为了速度牺牲可靠性。</p>
+      </div>
+    </div>
+
+  </div>
+
+  <h3>阶段总览表</h3>
+
+  <table>
+    <tr><th>阶段</th><th>周期</th><th>目标</th><th>验收标准</th><th>风险等级</th></tr>
+    <tr><td>0</td><td>第1-2周</td><td>环境搭建</td><td>仿真中控制虚拟臂运动</td><td><span class="tag algo">低</span></td></tr>
+    <tr><td>1</td><td>第3-4周</td><td>单点动作验证</td><td>重复10次抓取成功率≥90%</td><td><span class="tag algo">低</span></td></tr>
+    <tr><td>2</td><td>第5-7周</td><td>视觉感知</td><td>塑料袋检测mAP≥0.8</td><td><span class="tag hw">中</span></td></tr>
+    <tr><td>3</td><td>第8-11周</td><td>抓取闭环</td><td>成功率≥70%</td><td><span class="tag hw">中</span></td></tr>
+    <tr><td>4</td><td>第12-14周</td><td>拆袋与分离</td><td>物料完整取出成功率≥80%</td><td><span class="tag new">高</span></td></tr>
+    <tr><td>5</td><td>第15-16周</td><td>联合调试与优化</td><td>成功率≥90%，节拍≤30秒/件</td><td><span class="tag hw">中</span></td></tr>
+  </table>
+
+</section>
+
+<!-- ═══════════════════════════════════════════
+     模块 7：团队分工与角色定义
+     ═══════════════════════════════════════════ -->
+<section id="sec7">
+  <h2><span class="section-num">7</span> 团队分工与角色定义（按5人团队）</h2>
+
+  <p>一个完整的机械臂拆袋项目需要多学科知识交叉。下面是一份<strong>5人理想团队</strong>的分工方案。如果团队人数不足，也给出了3人和2人的合并建议。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧩 注意事项</div>
+    <ul>
+      <li><strong>分工不是绝对的。</strong>在实际开发中，尤其是人数较少的团队，每个人都会接触到自己领域之外的工作。重要的是<strong>每个领域至少有一个责任人</strong>。</li>
+      <li><strong>"可以不会但需要学"这一列是关键参考：</strong>它告诉你要招的人不需要是专家——只要愿意学下面列出的技术，就能胜任。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec7-1">7.1 5人团队分工方案</h3>
+
+  <table>
+    <tr><th>角色</th><th>人数</th><th>技能要求</th><th>具体任务</th><th>可以不会但需要学习</th></tr>
+    <tr>
+      <td><strong>机器人系统工程师</strong></td>
+      <td>1人</td>
+      <td>ROS2、Linux、Python/C++、MoveIt2</td>
+      <td>搭建ROS2环境和仿真、编写状态机、MoveIt2运动规划、机械臂驱动和通信、各模块集成调试</td>
+      <td>ROS2核心概念（节点/话题/服务/动作）、MoveIt2 API、URDF/SRDF建模、Linux系统管理</td>
+    </tr>
+    <tr>
+      <td><strong>视觉算法工程师</strong></td>
+      <td>1.5人</td>
+      <td>Python、PyTorch、OpenCV、目标检测</td>
+      <td>数据集采集和标注、YOLOv8训练和部署、SAM2分割、手眼标定、坐标转换和抓取点计算</td>
+      <td>YOLOv8训练流程、SAM2推理部署、相机模型和标定原理、ROS2 CV Bridge</td>
+    </tr>
+    <tr>
+      <td><strong>控制算法工程师</strong></td>
+      <td>0.5人</td>
+      <td>力控原理、运动学、ROS2控制</td>
+      <td>吸盘/夹爪控制参数调试、力控阈值设置、拆袋动作力/位混合控制、运动轨迹平滑优化</td>
+      <td>ROS2 Control框架、力/扭矩传感器接口、导纳控制/阻抗控制基础</td>
+    </tr>
+    <tr>
+      <td><strong>硬件工程师</strong></td>
+      <td>1人</td>
+      <td>机械设计、电气接线、3D打印/加工</td>
+      <td>末端执行器设计（吸盘/夹爪/刀片安装座）、气路系统搭建、相机和光源支架、电气接线和安全防护</td>
+      <td>SolidWorks/Fusion 360基础、气动元件选型、3D打印知识、基本电路接线</td>
+    </tr>
+    <tr>
+      <td><strong>全栈/测试工程师</strong></td>
+      <td>0.5人</td>
+      <td>Python、脚本编写、数据处理</td>
+      <td>编写自动化测试脚本、日志记录和分析、数据可视化（成功率/节拍/失败原因）、辅助调试、文档维护</td>
+      <td>ROS2 bag数据录制和分析、Python数据分析（pandas/matplotlib）、基础Linux运维</td>
+    </tr>
+  </table>
+
+  <h3 id="sec7-2">7.2 弹性分工方案</h3>
+
+  <h4>方案一：3人团队</h4>
+
+  <table>
+    <tr><th>成员</th><th>主要角色</th><th>兼顾角色</th><th>挑战与建议</th></tr>
+    <tr>
+      <td>A</td>
+      <td>机器人系统工程师</td>
+      <td>控制算法工程师（兼职）</td>
+      <td>压力最大。优先掌握ROS2和MoveIt2基础，控制部分只做最基本的力控参数调试</td>
+    </tr>
+    <tr>
+      <td>B</td>
+      <td>视觉算法工程师</td>
+      <td>全栈/测试工程师（兼职）</td>
+      <td>视觉工作集中在前中期（数据→训练→标定），后期主要做测试和数据分析</td>
+    </tr>
+    <tr>
+      <td>C</td>
+      <td>硬件工程师</td>
+      <td>—</td>
+      <td>硬件工作集中在前期设计和采购，后期配合其他成员调试</td>
+    </tr>
+  </table>
+
+  <p><strong>关键策略：</strong>3人团队必须极度聚焦。视觉模型直接用YOLOv8预训练权重微调。优先采购成熟的末端执行器（不要自己设计），使用电动真空发生器（避免气路调试）。</p>
+
+  <h4>方案二：2人团队</h4>
+
+  <table>
+    <tr><th>成员</th><th>主要角色</th><th>兼顾角色</th><th>建议策略</th></tr>
+    <tr>
+      <td>甲</td>
+      <td>机器人系统 + 控制 + 硬件</td>
+      <td>ROS2、机械设计、接线</td>
+      <td>使用电动真空吸盘（避免气路），采购成品末端执行器</td>
+    </tr>
+    <tr>
+      <td>乙</td>
+      <td>视觉 + 全栈/测试</td>
+      <td>模型训练、标定、测试</td>
+      <td>租用云端GPU训练模型，使用现成标定工具包（easy_handeye）</td>
+    </tr>
+  </table>
+
+  <p><strong>关键策略：</strong>2人团队要做的第一件事是<strong>降低项目范围</strong>——简化拆袋方案（只做吸盘撕裂）、使用更稳定的视觉方案。优先保证跑通，再考虑性能优化。</p>
+
+  <h3 id="sec7-3">7.3 每个角色的学习路径建议</h3>
+
+  <div class="grid-2">
+    <div class="card green">
+      <h4>机器人系统工程师</h4>
+      <ol>
+        <li><strong>第1-2周：</strong>ROS2官方教程（Publisher/Subscriber）</li>
+        <li><strong>第3-4周：</strong>URDF建模 + TF + RViz可视化</li>
+        <li><strong>第5-6周：</strong>MoveIt2教程（运动规划API、碰撞检测）</li>
+        <li><strong>第7-8周：</strong>ROS2 Control + 真实机械臂通信</li>
+      </ol>
+    </div>
+    <div class="card green">
+      <h4>视觉算法工程师</h4>
+      <ol>
+        <li><strong>第1-2周：</strong>Python + OpenCV基础</li>
+        <li><strong>第3-4周：</strong>PyTorch入门 + YOLOv8官方教程</li>
+        <li><strong>第5-6周：</strong>相机模型 + 手眼标定</li>
+        <li><strong>第7-8周：</strong>SAM2部署 + 抓取点计算</li>
+      </ol>
+    </div>
+    <div class="card orange">
+      <h4>控制算法工程师</h4>
+      <ol>
+        <li><strong>第1-2周：</strong>机器人运动学基础</li>
+        <li><strong>第3-4周：</strong>ROS2 Control框架</li>
+        <li><strong>第5-6周：</strong>力/位混合控制理论</li>
+        <li><strong>第7-8周：</strong>吸盘/夹爪控制参数调试</li>
+      </ol>
+    </div>
+    <div class="card orange">
+      <h4>硬件工程师</h4>
+      <ol>
+        <li><strong>第1-2周：</strong>3D建模速成（Fusion 360）</li>
+        <li><strong>第3-4周：</strong>气动系统设计</li>
+        <li><strong>第5-6周：</strong>末端执行器设计迭代</li>
+        <li><strong>第7-8周：</strong>电气接线 + 传感器集成</li>
+      </ol>
+    </div>
+  </div>
+
+</section>
+
+<!-- ═══════════════════════════════════════════
+     模块 8：常见失败模式与解决预案
+     ═══════════════════════════════════════════ -->
+<section id="sec8">
+  <h2><span class="section-num">8</span> 常见失败模式与解决预案</h2>
+
+  <p>在开发机械臂项目中，失败是常态而非例外。下面这个表格涵盖了15个最常见的失败场景。强烈建议：<strong>在项目开始前就把这个表格打印出来贴在墙上</strong>。当遇到问题时先对照表格排查，不要凭感觉猜测。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧩 使用指南</div>
+    <p>表格按照"先看现象 → 再查原因 → 按顺序排查 → 按步骤解决"的逻辑设计。排查步骤中标注了优先级顺序，请从第一步开始依次检查，不要跳跃。</p>
+  </div>
+
+  <table>
+    <tr><th style="width:16%">失败现象</th><th style="width:16%">可能原因</th><th style="width:34%">排查步骤（按顺序）</th><th style="width:34%">解决方案</th></tr>
+    <tr>
+      <td><strong>1. 吸盘抓不起塑料袋</strong></td>
+      <td>漏气、负压不足、吸盘不贴合</td>
+      <td>①查真空表是否<-60kPa ②听漏气声 ③查吸盘破损/老化 ④查气管接头</td>
+      <td>换海绵吸盘（风琴型）；增加供气压力至0.5-0.6MPa；增大吸盘口径；降低接触速度</td>
+    </tr>
+    <tr>
+      <td><strong>2. 塑料袋撕裂失败</strong></td>
+      <td>材料太韧、撕裂方向不对、速度不合适</td>
+      <td>①查塑料袋材质(PE/PET?) ②观察是否先拉伸再破裂 ③查撕裂速度</td>
+      <td>增加热切割（刀片加热至150-200°C）；从袋口封边处撕裂；增加撕裂速度</td>
+    </tr>
+    <tr>
+      <td><strong>3. 物料掉落</strong></td>
+      <td>抓取姿态不对、夹持力不足、加速度过大</td>
+      <td>①查夹爪对准重心？②查夹持力读数 ③查加速度参数</td>
+      <td>调整抓取姿态；增加力控阈值；增加接料安全网；降低加速度(max_acceleration_scaling_factor)</td>
+    </tr>
+    <tr>
+      <td><strong>4. YOLO检测不到塑料袋</strong></td>
+      <td>光照不足/过曝、训练数据不足、视角变化大</td>
+      <td>①查相机画面亮度 ②查塑料袋在视场内？③查置信度阈值 ④查模型验证集表现</td>
+      <td>调整补光灯(500-1000 lux)；降低置信度阈值至0.3-0.4；补充训练数据；使用数据增强</td>
+    </tr>
+    <tr>
+      <td><strong>5. 机械臂运动规划失败</strong></td>
+      <td>目标位姿不可达、碰撞、IK无解</td>
+      <td>①查目标在工作空间内？②查Planning Scene碰撞物体 ③查IK求解器状态</td>
+      <td>添加中间过渡点；换TracIK求解器；增加规划超时；放松碰撞安全余量</td>
+    </tr>
+    <tr>
+      <td><strong>6. 相机标定漂移</strong></td>
+      <td>支架松动、标定参数变化</td>
+      <td>①查支架是否松动 ②拍标定板对比重投影误差 ③查TF变换</td>
+      <td>加固支架；重新标定(easy_handeye)；添加标定状态监控脚本</td>
+    </tr>
+    <tr>
+      <td><strong>7. ROS2节点通信超时</strong></td>
+      <td>QoS不匹配、网络延迟、节点未启动</td>
+      <td>①查所有节点日志(ros2 node info) ②查话题QoS(ros2 topic info) ③查ROS_DOMAIN_ID</td>
+      <td>统一QoS配置(RELIABLE)；设置相同ROS_DOMAIN_ID；添加心跳检测+自动重连</td>
+    </tr>
+    <tr>
+      <td><strong>8. 深度图大片黑色/缺失</strong></td>
+      <td>透明物体、反光、超出量程</td>
+      <td>①查深度传感器量程 ②查反光/透明区域 ③查红外干扰 ④查镜头脏污</td>
+      <td>增加补光灯；用Depth Anything V2补全深度；多相机融合；喷涂微量滑石粉增加纹理</td>
+    </tr>
+    <tr>
+      <td><strong>9. 拆袋时物料被一起带出</strong></td>
+      <td>吸力过大、物料太轻、静电吸附</td>
+      <td>①查真空度是否过高 ②查静电 ③查吸盘接触位置 ④查吸盘尺寸过大</td>
+      <td>降低真空度至-40~-50kPa；区分吸袋和取物力；加"抖动"步骤分离；用离子风枪消静电</td>
+    </tr>
+    <tr>
+      <td><strong>10. Gazebo仿真与实物差距大</strong></td>
+      <td>动力学参数不准、摩擦系数错误</td>
+      <td>①对比仿真和实物关节力矩 ②查URDF质量/惯性参数 ③查摩擦和阻尼参数</td>
+      <td>实物参数辨识；调整物理引擎参数(max_step_size)；考虑用Mujoco/Isaac Sim替代</td>
+    </tr>
+    <tr>
+      <td><strong>11. 夹爪夹不住内部物料</strong></td>
+      <td>夹持力不够、行程不匹配、姿态不对</td>
+      <td>①查夹爪开合距离vs物料尺寸 ②查夹持力设定值 ③查接触面油污/磨损</td>
+      <td>换软体夹爪/贴防滑垫；增加保压时间(0.3-0.5s)；调整夹爪安装角度</td>
+    </tr>
+    <tr>
+      <td><strong>12. 系统死锁（状态机卡住）</strong></td>
+      <td>状态转换条件不满足、某模块挂起</td>
+      <td>①查当前状态和等待条件 ②ros2 node list查所有节点 ③查节点日志时间戳</td>
+      <td>每个状态加超时保护(timeout)；完善异常处理分支；实现Watchdog线程；添加Safe Stop状态</td>
+    </tr>
+    <tr>
+      <td><strong>13. 吸盘释放塑料袋失败</strong></td>
+      <td>真空残留、电磁阀故障、静电吸附</td>
+      <td>①查电磁阀是否切换至排气 ②查释放延迟 ③查静电 ④查气路单向阀</td>
+      <td>增加吹气功能(Positive Pressure Blow-off)；换三位五通电磁阀；用离子风枪消静电</td>
+    </tr>
+    <tr>
+      <td><strong>14. 多物料堆叠时抓取冲突</strong></td>
+      <td>抓取顺序不合理、碰撞检测不足</td>
+      <td>①观察是否与其他物料碰撞 ②查视觉是否区分堆叠层 ③查路径经过其他物料上方</td>
+      <td>先抓上层/外层物料；点云实时更新到Planning Scene；优先抓最高处物料(z轴最大)</td>
+    </tr>
+    <tr>
+      <td><strong>15. 计算延迟导致抓取偏移</strong></td>
+      <td>端到端延迟大、物料在延迟期间移动</td>
+      <td>①测量视觉延迟 ②测量规划延迟 ③测量通信延迟 ④查总处理时间</td>
+      <td>流水线并行化；模型轻量化(YOLOv8n)；TensorRT/ONNX Runtime加速；缓存规划结果</td>
+    </tr>
+  </table>
+
+  <h3 id="sec8-1">8.1 系统化排查方法论</h3>
+
+  <ol>
+    <li><strong>隔离法：</strong>先断开所有依赖，单独测试有问题的模块。</li>
+    <li><strong>复现法：</strong>反复执行相同操作，观察失败是否是确定性的。</li>
+    <li><strong>日志法：</strong>在关键节点添加详细日志（时间戳、输入输出值、状态码）。</li>
+    <li><strong>二分法：</strong>流程太长时用二分法缩小范围——测试前半段→正常就测后半段。</li>
+  </ol>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧪 最重要的调试原则</div>
+    <p><strong>一次只改一个参数。</strong>遇到问题时，最容易犯的错误是"一次性改多个参数"——同时调气压、换吸盘型号、改运动轨迹，问题解决了但不知道是哪个改动起了作用。正确做法：一次只改一个参数，测试，记录结果，再改下一个。保持实验记录文档。</p>
+  </div>
+
+</section>
+
+<!-- ═══════════════════════════════════════════
+     模块 9：学习资源与快速入门路径
+     ═══════════════════════════════════════════ -->
+<section id="sec9">
+  <h2><span class="section-num">9</span> 学习资源与快速入门路径</h2>
+
+  <p>对于团队，最困难的部分往往不是技术本身，而是<strong>"不知道该学什么"和"从哪里开始学"</strong>。下面这份资源清单按照"先打基础→再学工具→最后深入领域"的顺序组织。</p>
+
+  <div class="new-team-tip">
+    <div class="tip-title">🧩 注意事项</div>
+    <ul>
+      <li><strong>书和教程是"字典"不是"小说"：</strong>不要从头到尾读。用到什么查什么。</li>
+      <li><strong>视频课程适合入门，文档适合深入：</strong>先用视频建立感性认识，再读文档理解细节。</li>
+      <li><strong>论文先读摘要+引言+结论（10-15分钟），确定有用再深入：</strong>代码开源的论文，看代码比看论文更高效。</li>
+    </ul>
+  </div>
+
+  <h3 id="sec9-1">9.1 机械臂入门必读书籍与课程</h3>
+
+  <h4>免费课程（强烈推荐优先学习）</h4>
+
+  <table>
+    <tr><th>名称</th><th>类型</th><th>链接/搜索方式</th><th>学习重点</th></tr>
+    <tr>
+      <td><strong>台湾大学林沛群《机器人学》</strong></td>
+      <td>视频课程（YouTube免费）</td>
+      <td>YouTube搜索"林沛群 机器人学"</td>
+      <td>运动学、动力学、轨迹规划。中文授课，非常适合入门。建议花2-3周看完前8讲。</td>
+    </tr>
+    <tr>
+      <td><strong>《Modern Robotics》</strong></td>
+      <td>免费PDF + YouTube视频</td>
+      <td>modernrobotics.org</td>
+      <td>西北大学经典教材。旋量理论替代DH参数。选择性阅读第1-6章和第8-11章。</td>
+    </tr>
+    <tr>
+      <td><strong>《ROS机器人开发实践》胡春旭</strong></td>
+      <td>书籍</td>
+      <td>各大电商平台购买</td>
+      <td>国内最完整的ROS中文参考书。适合"用到什么查什么"，不建议从头到尾读。</td>
+    </tr>
+    <tr>
+      <td><strong>MoveIt2官方教程</strong></td>
+      <td>在线文档</td>
+      <td>moveit.picknik.ai</td>
+      <td>最权威的MoveIt2学习资料。按Getting Started → Move Group Interface → Planning Scene的顺序学。</td>
+    </tr>
+  </table>
+
+  <h4>付费但值得的书籍</h4>
+  <ul>
+    <li><strong>《机器人学导论》（John J. Craig）</strong>——DH参数讲得最清晰。预算有限就看林沛群的课。</li>
+    <li><strong>《A Mathematical Introduction to Robotic Manipulation》（Murray, Li, Sastry）</strong>——更数学化，适合深入理解运动学和动力学。</li>
+  </ul>
+
+  <h3 id="sec9-2">9.2 ROS学习最佳路径（按周排）</h3>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <h4>第1周：ROS2基础概念</h4>
+      <p>安装ROS2 Humble → 完成"Beginner: CLI Tools" → 完成Publisher/Subscriber、Service/Client示例 → 理解节点/话题/服务/动作的区别。</p>
+      <p><strong>练习：</strong>写一个发布关节状态的话题节点和一个订阅并打印的控制台节点。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>第2周：URDF建模 + TF坐标系</h4>
+      <p>学习URDF文件格式 → 学习Xacro（URDF宏） → 理解TF树（broadcaster/listener） → 在RViz中可视化。</p>
+      <p><strong>练习：</strong>创建2关节机械臂模型，通过Python代码发布关节状态让它动起来。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>第3周：MoveIt2基础</h4>
+      <p>安装MoveIt2 → 理解核心组件（Planning Scene / Move Group / Planning Pipeline） → 学习Python API。</p>
+      <p><strong>练习：</strong>控制Panda机械臂在仿真中完成"从A点运动到B点"，添加障碍物测试避障。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>第4周：真实机械臂控制</h4>
+      <p>ROS2 Control框架 → 硬件接口编写 → 真实机械臂通信协议（EtherCAT/Modbus/CAN） → MoveIt2与实物对接。</p>
+      <p><strong>练习：</strong>将仿真控制程序迁移到真实机械臂。</p>
+    </div>
+  </div>
+
+  <h3 id="sec9-3">9.3 抓取领域必读论文（7篇）</h3>
+
+  <table>
+    <tr><th>论文名称</th><th>发表</th><th>优先级</th><th>与本项目的关系</th><th>中文解读要点</th></tr>
+    <tr>
+      <td><strong>YOLOv8: Real-Time Object Detection</strong></td>
+      <td>Ultralytics 2023</td>
+      <td><span class="tag">必读</span></td>
+      <td>塑料袋和物料实时检测</td>
+      <td>C2f模块替换C3、解耦检测头、Anchor-Free。重点：在自己的数据集上微调和模型量化。</td>
+    </tr>
+    <tr>
+      <td><strong>Segment Anything 2 (SAM 2)</strong></td>
+      <td>Meta 2024</td>
+      <td><span class="tag">必读</span></td>
+      <td>塑料袋实例分割，精确抓取点计算</td>
+      <td>提示工程——用YOLO检测框作为SAM2输入。重点看推理部署代码。</td>
+    </tr>
+    <tr>
+      <td><strong>GraspNet-1Billion</strong></td>
+      <td>CVPR 2020</td>
+      <td><span class="tag">推荐</span></td>
+      <td>抓取姿态生成</td>
+      <td>抓取质量评分网络。下载预训练模型直接使用。重点：6-DoF抓取姿态表示方法。</td>
+    </tr>
+    <tr>
+      <td><strong>AnyGrasp</strong></td>
+      <td>RSS 2023</td>
+      <td><span class="tag">推荐</span></td>
+      <td>任意物体实时鲁棒抓取</td>
+      <td>轻量级网络50ms内输出高质量抓取姿态。算力有限时比GraspNet更实用。</td>
+    </tr>
+    <tr>
+      <td><strong>FoundationPose</strong></td>
+      <td>CVPR 2024</td>
+      <td><span class="tag">推荐</span></td>
+      <td>物料6D位姿估计</td>
+      <td>统一框架支持无模型和基于模型。利用扩散模型+渲染对比。NVIDIA出品。</td>
+    </tr>
+    <tr>
+      <td><strong>Depth Anything V2</strong></td>
+      <td>2024</td>
+      <td><span class="tag">推荐</span></td>
+      <td>单目深度估计，弥补深度相机缺失</td>
+      <td>仅需RGB图像即可输出深度图。作为深度相机的备用方案。重点：ONNX导出和实时推理优化。</td>
+    </tr>
+    <tr>
+      <td><strong>ShakingBot</strong></td>
+      <td>2023</td>
+      <td><span class="tag">选读</span></td>
+      <td>拆袋和物料分离参考方案</td>
+      <td>用"抖动"动作分离塑料袋中物料。特别建议读失败案例分析部分。</td>
+    </tr>
+  </table>
+
+  <h3 id="sec9-4">9.4 开源项目推荐</h3>
+
+  <table>
+    <tr><th>项目名称</th><th>GitHub地址</th><th>用途</th><th>技术栈</th><th>推荐理由</th></tr>
+    <tr><td><strong>graspnet</strong></td><td>github.com/graspnet/graspnet-baseline</td><td>抓取姿态检测</td><td>PyTorch、PointNet++</td><td>数据量大（10亿+抓取点），预训练模型效果优秀</td></tr>
+    <tr><td><strong>anygrasp</strong></td><td>github.com/graspnet/anygrasp_sdk</td><td>实时抓取生成</td><td>PyTorch、TensorRT</td><td>推理速度快（50ms），有ROS接口，易集成</td></tr>
+    <tr><td><strong>foundationpose</strong></td><td>github.com/NVlabs/FoundationPose</td><td>6D姿态估计</td><td>PyTorch、NeRF</td><td>NVIDIA出品，支持无模型姿态估计</td></tr>
+    <tr><td><strong>sam2</strong></td><td>github.com/facebookresearch/sam2</td><td>实例分割</td><td>PyTorch</td><td>Meta出品，分割质量极高，支持视频流</td></tr>
+    <tr><td><strong>depth-anything-v2</strong></td><td>github.com/DepthAnything/Depth-Anything-V2</td><td>单目深度估计</td><td>PyTorch、ONNX</td><td>不需要深度相机即可获得深度信息</td></tr>
+  </table>
+
+  <h3 id="sec9-5">9.5 仿真环境推荐与对比</h3>
+
+  <table>
+    <tr><th>仿真环境</th><th>优点</th><th>缺点</th><th>适合场景</th><th>推荐度</th></tr>
+    <tr>
+      <td><strong>Gazebo + 自己的URDF</strong></td>
+      <td>与ROS2原生集成、社区最大、免费开源</td>
+      <td>物理引擎精度一般（ODE）、渲染差</td>
+      <td>运动规划验证、基础抓取测试</td>
+      <td><span class="tag algo">首选</span></td>
+    </tr>
+    <tr>
+      <td><strong>CoppeliaSim（原V-REP）</strong></td>
+      <td>物理引擎可选（Bullet/ODE/Newton）、内置IK求解器</td>
+      <td>ROS2集成需额外配置、社区较小</td>
+      <td>精确物理仿真、多机器人仿真</td>
+      <td><span class="tag hw">中等</span></td>
+    </tr>
+    <tr>
+      <td><strong>NVIDIA Isaac Sim</strong></td>
+      <td>物理精度极高（PhysX 5）、渲染逼真、支持合成数据生成</td>
+      <td>需要RTX GPU、学习曲线陡、资源占用大</td>
+      <td>高精度仿真、Sim-to-Real迁移学习</td>
+      <td><span class="tag new">进阶</span></td>
+    </tr>
+  </table>
+
+  <div class="new-team-tip">
+    <div class="tip-title">📌 仿真建议</div>
+    <p>对于入门团队，<strong>先使用Gazebo</strong>。它和ROS2集成最无缝，遇到问题最容易在中文社区找到解答。当Gazebo的物理精度不够（比如塑料袋变形仿真不准确）时，再考虑Isaac Sim。不要在仿真环境选择上花费超过1周。</p>
+  </div>
+
+  <h3 id="sec9-6">9.6 综合学习路线图</h3>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <h4>第1-2周：机器人理论速成 + 环境搭建</h4>
+      <p>看林沛群《机器人学》第1-8讲（边看边做笔记）。同时安装Ubuntu + ROS2环境。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>第3-4周：ROS2 + MoveIt2上手</h4>
+      <p>完成ROS2 Beginner教程 + MoveIt2 Getting Started。在Gazebo中控制虚拟臂运动。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>第5-6周：视觉入门 + 项目数据集</h4>
+      <p>OpenCV基础 + YOLOv8官方文档 + 采集标注本项目数据集（物料框+塑料袋）。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>第7-10周：核心功能开发</h4>
+      <p>手眼标定 → 视觉→坐标转换→MoveIt2规划全链路 → 拆袋方案开发 → 对照失败模式表排查。</p>
+    </div>
+    <div class="timeline-item">
+      <h4>第10周以后：调优与深入</h4>
+      <p>根据瓶颈选择：GraspNet/AnyGrasp（抓取）→ FoundationPose（位姿）→ Depth Anything V2（深度补偿）→ TensorRT（推理加速）。</p>
+    </div>
+  </div>
+
+  <p style="margin-top:2em;font-style:italic;color:var(--text-muted);">🎯 记住：机器人开发是一个"动手学"的过程。你可以读完100本书但还是不会控制机械臂，但只要写100行代码并让机械臂动了一次，你就真正入门了。祝你们团队好运！</p>
+
+</section>
+
+<!-- ═══════ PRINT HINT ═══════ -->
+<div class="print-hint no-print">
+  <strong>🖨️ 生成 PDF：</strong>点击上方工具栏 <strong>"生成 / 保存为 PDF"</strong> 按钮（或按 Ctrl+P / Cmd+P），在打印对话框中选择 <strong>"另存为 PDF"</strong> 即可导出为 PDF 文件。<br>
+  建议使用 Chrome / Edge 浏览器打开，打印效果最佳。文档共 9 个模块、2343 行 HTML 代码，字数相当于 25+ 页 A4 文档。
+</div>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p><strong>机械臂拆包全流程自动化技术方案 v2.0 — 极详细版</strong></p>
+    <p>生成日期：2026-06-04 | 基于 ROS 2 Humble + MoveIt 2 + PyTorch 技术栈</p>
+    <p style="margin-top:4px;font-size:.76rem;">硬件选型请以供应商最新参数为准 | 开源项目版本请参考各仓库最新Release | 文档内容仅供参考，实际实施请结合团队情况调整</p>
+  </div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════
+   主题切换
+   ═══════════════════════════════════════════ */
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.getElementById('themeBtn');
+  const current = html.getAttribute('data-theme');
+  if (current === 'dark') {
+    html.removeAttribute('data-theme');
+    btn.innerHTML = '🌙 暗色主题';
+    localStorage.setItem('theme', 'light');
+  } else {
+    html.setAttribute('data-theme', 'dark');
+    btn.innerHTML = '☀️ 亮色主题';
+    localStorage.setItem('theme', 'dark');
+  }
+}
+(function() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.getElementById('themeBtn').innerHTML = '☀️ 亮色主题';
+  }
+})();
+
+/* ═══════════════════════════════════════════
+   自动生成 TOC
+   ═══════════════════════════════════════════ */
+(function() {
+  const tocList = document.getElementById('toc-list');
+  const sections = document.querySelectorAll('section[id]');
+  let html = '';
+  sections.forEach(sec => {
+    const h2 = sec.querySelector('h2');
+    if (!h2) return;
+    const num = sec.id.replace('sec', '');
+    const text = h2.textContent.replace(/^\d+\s*/, '').trim();
+    html += `<li><a href="#${sec.id}">${num}. ${text}</a></li>`;
+    sec.querySelectorAll('h3[id]').forEach(h3 => {
+      const h3text = h3.textContent.trim();
+      html += `<li><a class="toc-l2" href="#${h3.id}">${h3text}</a></li>`;
+    });
+    if (!sec.querySelector('h3[id]')) {
+      sec.querySelectorAll('h4[id]').forEach(h4 => {
+        const h4text = h4.textContent.trim();
+        html += `<li><a class="toc-l3" href="#${h4.id}">${h4text}</a></li>`;
+      });
+    }
+  });
+  tocList.innerHTML = html;
+})();
+</script>
+
+</body>
+</html>
